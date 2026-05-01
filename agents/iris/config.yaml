@@ -1,0 +1,8 @@
+model: mistral/mistral-small-latest
+context_window: 128K
+thinking_mode: true
+temperature: 0.7
+top_p: 0.9
+benchmarks:
+  - miniwob
+  - agentic_workflows

@@ -1,0 +1,3 @@
+model: whisper-large-v3
+tools: [whisper, coqui-tts, ffmpeg]
+thinking_mode: false

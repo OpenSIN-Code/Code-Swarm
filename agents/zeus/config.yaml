@@ -1,0 +1,8 @@
+model: mistral/mistral-medium-latest
+context_window: 1M
+thinking_mode: true
+temperature: 0.5
+top_p: 0.9
+benchmarks:
+  - swe_bench_pro
+  - agentic_workflows
