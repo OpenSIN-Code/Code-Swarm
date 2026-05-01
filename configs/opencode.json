@@ -1,0 +1,156 @@
+{
+  "agents": {
+    "hermes": {
+      "role": "Dispatcher/Executor",
+      "tools": ["langgraph", "opencode", "docker"],
+      "output_format": "json",
+      "benchmarks": ["agentic_workflows", "swe_bench_pro", "terminal_bench_2.0"],
+      "responsibilities": [
+        "Task-Verteilung",
+        "Workflow-Orchestrierung",
+        "Ergebnis-Konsolidierung"
+      ],
+      "recommended_models": ["mistral/mistral-small-latest", "deepseek-v4-pro", "glm-5.1"],
+      "model_config": {
+        "context_window": "1M",
+        "thinking_mode": true,
+        "tool_calls": 1000,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "prometheus": {
+      "role": "System Planner",
+      "tools": ["langgraph", "opencode"],
+      "output_format": "yaml",
+      "benchmarks": ["swe_bench_pro", "agentic_workflows"],
+      "responsibilities": [
+        "Architektur-Design",
+        "Lang-horizontale Planung",
+        "Feedback-Loop-Design"
+      ],
+      "recommended_models": ["mistral/mistral-small-latest", "deepseek-v4-pro", "glm-5.1", "qwen-3.6-max"],
+      "model_config": {
+        "context_window": "1M",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.6,
+        "top_p": 0.95
+      }
+    },
+    "zeus": {
+      "role": "Validation Superlayer",
+      "tools": ["opencode", "security-tools"],
+      "output_format": "json",
+      "benchmarks": ["swe_bench_pro", "agentic_workflows"],
+      "responsibilities": [
+        "Kritische Review",
+        "Security-Audits",
+        "Future-proofing"
+      ],
+      "recommended_models": ["mistral/mistral-small-latest", "deepseek-v4-pro", "glm-5.1"],
+      "model_config": {
+        "context_window": "1M",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.5,
+        "top_p": 0.9
+      }
+    },
+    "atlas": {
+      "role": "Backend Engineer",
+      "tools": ["docker", "pytest", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["swe_bench_mini", "humaneval_x", "swe_bench_pro"],
+      "responsibilities": [
+        "Backend-Entwicklung",
+        "API-Design",
+        "Datenbank-Schema"
+      ],
+      "recommended_models": ["deepseek-v4-pro", "glm-5.1", "qwen-3.6-max"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "iris": {
+      "role": "Frontend Engineer",
+      "tools": ["selenium", "playwright", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["miniwob", "agentic_workflows"],
+      "responsibilities": [
+        "Frontend-Entwicklung",
+        "UI/UX-Implementierung",
+        "Interaktive Tests"
+      ],
+      "recommended_models": ["mistral/mistral-small-latest", "qwen-3.6-max", "mistral-small-2603"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": false,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "janus": {
+      "role": "API Architect",
+      "tools": ["postman", "pytest", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["swe_bench_mini", "humaneval_x", "swe_bench_pro"],
+      "responsibilities": [
+        "API-Design",
+        "Integration",
+        "Testing"
+      ],
+      "recommended_models": ["deepseek-v4-pro", "glm-5.1", "qwen-3.6-max"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "hades": {
+      "role": "Database Architect",
+      "tools": ["docker", "sqlalchemy", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["swe_bench_mini", "sql_benchmarks"],
+      "responsibilities": [
+        "Datenbank-Design",
+        "Migration",
+        "Optimierung"
+      ],
+      "recommended_models": ["deepseek-v4-pro", "glm-5.1", "qwen-3.6-max"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "asclepius": {
+      "role": "QA / Testing",
+      "tools": ["pytest", "selenium", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["swe_bench_mini", "humaneval_x", "swe_bench_pro"],
+      "responsibilities": [
+        "Automatisierte Tests",
+        "Edge Cases",
+        "Code-Qualität"
+      ],
+      "recommended_models": ["deepseek-v4-pro", "glm-5.1", "qwen-3.6-max"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    }
+  }
+}

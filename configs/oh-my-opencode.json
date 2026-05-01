@@ -1,0 +1,264 @@
+{
+  "agents": {
+    "athena": {
+      "role": "Strategic Researcher",
+      "tools": ["webauto", "google_search", "opencode", "vector-db"],
+      "output_format": "json",
+      "benchmarks": ["marktanalyse", "trends"],
+      "responsibilities": [
+        "High-Level Research",
+        "Marktanalyse",
+        "Trend-Identifikation"
+      ],
+      "recommended_models": ["mistral/mistral-small-latest"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "argus": {
+      "role": "Multi-Source Researcher",
+      "tools": ["webauto", "google_search", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["web_recherche", "foren", "social_media"],
+      "responsibilities": [
+        "Web-Recherche",
+        "Foren & Social Media",
+        "Quellen-Sammlung"
+      ],
+      "recommended_models": ["mistral/mistral-small-latest"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "daedalus": {
+      "role": "Technical Researcher",
+      "tools": ["ast-grep", "lsp", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["code_review", "architektur_review"],
+      "responsibilities": [
+        "Code-Analyse",
+        "Architektur-Reviews",
+        "Technische Dokumentation"
+      ],
+      "recommended_models": ["mistral/mistral-small-latest"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "hermes_scout": {
+      "role": "Fast Retriever",
+      "tools": ["webauto", "api-calls", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["retrieval", "api_integration"],
+      "responsibilities": [
+        "Schnelle Datenabfragen",
+        "API-Integration",
+        "Retrieval"
+      ],
+      "recommended_models": ["mistral/mistral-small-latest"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "multimedia_looker": {
+      "role": "Vision/GUI Looker",
+      "tools": ["opencode-vision", "selenium", "docker", "vision-gate"],
+      "output_format": "json",
+      "benchmarks": ["vision_gui_grounding", "screen_spot", "mmmu_pro"],
+      "responsibilities": [
+        "Screenshots analysieren",
+        "GUI-Elemente erkennen",
+        "Vision-Tasks"
+      ],
+      "recommended_models": ["mimo-v2.5-pro", "magistral-medium-latest", "llama-3.2-11b-vision-instruct"],
+      "model_config": {
+        "context_window": "1M",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "audio_agent": {
+      "role": "Audio TTS/SST",
+      "tools": ["whisper", "coqui-tts", "ffmpeg"],
+      "output_format": "json",
+      "benchmarks": ["audio_tts_sst", "wer", "mos"],
+      "responsibilities": [
+        "Sprache → Text (SST)",
+        "Text → Sprache (TTS)",
+        "Audio-Transkription"
+      ],
+      "recommended_models": ["whisper-large-v3", "coqui-tts", "minimax-m2.5"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": false,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "web_recherche_agent": {
+      "role": "Web Research",
+      "tools": ["webauto", "google_search", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["web_recherche"],
+      "responsibilities": [
+        "Google-Recherche",
+        "Foren & Social Media",
+        "Tiefen-Recherche"
+      ],
+      "recommended_models": ["mistral/mistral-small-latest"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "metis": {
+      "role": "Optimization Planner",
+      "tools": ["langgraph", "opencode"],
+      "output_format": "yaml",
+      "benchmarks": ["performance_optimierung"],
+      "responsibilities": [
+        "Effizienz-Optimierung",
+        "Ressourcen-Management"
+      ],
+      "recommended_models": ["mistral/mistral-small-latest"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.6,
+        "top_p": 0.95
+      }
+    },
+    "themis": {
+      "role": "Constraint Planner",
+      "tools": ["langgraph", "opencode"],
+      "output_format": "yaml",
+      "benchmarks": ["security", "compliance"],
+      "responsibilities": [
+        "Regeln, Limits",
+        "Security, Compliance",
+        "Legal"
+      ],
+      "recommended_models": ["mistral/mistral-small-latest"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.5,
+        "top_p": 0.9
+      }
+    },
+    "apollo": {
+      "role": "UX/Product Planner",
+      "tools": ["selenium", "playwright", "opencode"],
+      "output_format": "yaml",
+      "benchmarks": ["ux_testing"],
+      "responsibilities": [
+        "Nutzerperspektive",
+        "UX-Design"
+      ],
+      "recommended_models": ["mistral/mistral-small-latest"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "aegis": {
+      "role": "Security Auditor",
+      "tools": ["security-tools", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["security_audits", "penetration_testing"],
+      "responsibilities": [
+        "Sicherheitslücken",
+        "Penetration Testing"
+      ],
+      "recommended_models": ["mistral/mistral-small-latest"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.5,
+        "top_p": 0.9
+      }
+    },
+    "hephaestus": {
+      "role": "Engineering Reviewer",
+      "tools": ["linters", "formatters", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["code_quality"],
+      "responsibilities": [
+        "Code-Qualität",
+        "Best Practices"
+      ],
+      "recommended_models": ["mistral/mistral-small-latest"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "chronos": {
+      "role": "Future-proofing",
+      "tools": ["diagramming-tools", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["skalierbarkeit"],
+      "responsibilities": [
+        "Skalierbarkeit",
+        "Langzeit-Planung"
+      ],
+      "recommended_models": ["mistral/mistral-small-latest"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.6,
+        "top_p": 0.95
+      }
+    },
+    "nemesis": {
+      "role": "Failure Finder",
+      "tools": ["chaos-tools", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["chaos_engineering"],
+      "responsibilities": [
+        "Bricht alles absichtlich",
+        "Schwachstellen finden"
+      ],
+      "recommended_models": ["mistral/mistral-small-latest"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.8,
+        "top_p": 0.95
+      }
+    }
+  }
+}
