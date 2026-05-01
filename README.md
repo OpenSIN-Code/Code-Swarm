@@ -60,11 +60,22 @@ python cli/main.py run "Installiere Redis + Konfiguriere + Teste"
 python cli/main.py inspect
 ```
 
-## 📌 Wichtige Erkenntnisse
-- **Mistral Small 4 (`mistral/mistral-small-latest`)** ist **ultra-schnell + SOTA** für Frontend-Agenten (Iris) und **alle Agenten, die schnell + schlau sein müssen**
-- **DeepSeek V4-Pro** ist **beste Wahl für Backend-Agenten (Atlas, Janus, Hades)**
-- **GLM-5.1** ist **beste Wahl für Lang-horizontale Agenten (Hermes, Prometheus, Zeus)**
-- **Mimo V2.5 Pro** ist **beste Wahl für Vision/GUI-Agenten (Multimedia-Looker)**
+## 📌 Modell-Hierarchie (von User bestätigt)
+
+### 🥇 `mistral/mistral-large-latest` — **Stärkstes Modell**
+- **Prometheus** (System Planner) — maximale Planungs-Qualität
+- **Atlas** (Backend Engineer) — komplexe Backend-Architektur
+
+### 🥈 `mistral/mistral-medium-latest` — **Stark + Ausgewogen**
+- **Zeus** (Validation Superlayer) — kritische Reviews & Audits
+
+### 🥉 `mistral/mistral-small-latest` — **Ultra-schnell + SOTA** (Standard für ALLE anderen)
+- Alle anderen Haupt- & Sub-Agenten
+- User bestätigt: "ultra viel besser als deepseek-v4-pro, glm-5.1"
+
+### Spezialisiert
+- **Mimo V2.5 Pro** — Vision/GUI-Agenten (Multimedia-Looker)
+- **Whisper-Large-v3 + Coqui-TTS** — Audio-Agenten
 
 ## 🔗 Links
 - [Benchmark-Arena](https://github.com/SIN-Hackathon/benchmark-arena) (Benchmarks, Tabellen, Empfehlungen)
