@@ -1,15 +1,35 @@
 # 🔥 Code-Swarm: Agenten-Swarms für `opencode CLI`
 
+> **🚫 KEIN tmux! KEINE Worktrees! KEIN Background-Dispatch!**
+> Subagent-Delegation erfolgt **NUR** via opencode-native oh-my-opencode Sub-Sessions.
+
 ## 📌 Projektübersicht
-Ein **vollständiges Agenten-System** für `opencode CLI` und `Code-Swarm`.
-Enthält:
+Code-Swarm definiert **Haupt- und Sub-Agenten** für `opencode CLI`.
+Die Architektur ist **opencode-native**:
+
+```
+SIN-Zeus (Hauptagent)
+  ├── Delegiert an oh-my-opencode Subagenten
+  │   ├── Athena → Research  (klickbar in opencode Session)
+  │   ├── Argus  → Web-Suche (klickbar in opencode Session)
+  │   └── ...    → Du siehst WAS sie tun!
+  │
+  └── LangGraph-Pipeline orchestriert den Flow
+```
+
+### Kernprinzipien
+- **✅ Hauptagent → oh-my-opencode Subagenten** — INNERHALB der opencode Session
+- **✅ Jeder Subagent ist klickbar & nachverfolgbar**
+- **✅ Kein tmux, keine Worktrees, keine Background-Prozesse**
+- **✅ Kein `call_omo_agent` für Subagent-Dispatch**
+- **✅ opencode-native Delegation (das was funktioniert)**
+
+### Enthält
 - **Haupt-Agenten (`opencode.json`)** für Coding, Planung, Validation
 - **Sub-Agenten (`oh-my-opencode.json`)** für Research, Vision, Audio, Web-Recherche
 - **LangGraph-Pipeline** für StateGraph, Agenten-Nodes, Edges
-- **CI/CD-Pipelines** für GitHub Actions
 - **Agenten-Prompts** für jeden Agenten
 - **Feedback-Loops & Memory Layer** für Self-Improvement
-- **CLI-Vorlage** (copy-paste ready)
 
 ## 📁 Struktur
 ```bash
@@ -20,44 +40,31 @@ Code-Swarm/
 ├── langgraph/               # LangGraph-Pipeline
 │   ├── state.py             # StateGraph-Definition
 │   ├── graph.py             # Komplette Graph-Logik
-│   └── nodes/               # Agenten-Nodes
-├── agents/                  # Agenten-Definitionen & Prompts
-│   ├── hermes/              # Prompts + Logik
-│   ├── prometheus/          # Prompts + Logik
-│   └── ...                  # Alle Agenten
-├── cli/                     # Fertige CLI-Vorlage
-│   ├── main.py              # CLI-Entry-Point
-│   ├── commands.py          # CLI-Befehle
-│   └── opencode.py          # `opencode CLI`-Befehl
+├── agents/                  # Agenten-Prompts
+│   ├── hermes/              
+│   ├── prometheus/          
+│   └── ...                  # Alle 22 Agenten
+├── cli/                     # CLI
+│   └── main.py              
 ├── memory/                  # Memory Layer
-│   ├── vector_db.py         # Vektordatenbank
-│   └── state.py             # LangGraph-State
-├── feedback/                # Feedback-Loops & Self-Improvement
-│   ├── self_improvement.py  # Self-Improvement Loop
-│   ├── error_tracking.py    # Error Tracking
-│   └── loops.py             # Feedback-Loops
-├── tests/                   # Automatisierte Tests
-│   ├── test_hermes.py        # Tests für Hermes
-│   └── ...                  # Alle Tests
-└── .github/workflows/       # CI/CD-Pipelines
-    ├── test_hermes.yml      # Tests für Hermes
-    └── ...                  # Alle Pipelines
+│   ├── vector_db.py         
+│   └── state.py             
+├── feedback/                # Feedback-Loops
+│   ├── self_improvement.py  
+│   └── error_tracking.py    
+└── tests/                   # Tests
 ```
 
 ## 🚀 Quick Start
 ```bash
-# 1. Repo klonen
+# 1. Repo klonen + Configs kopieren
 gh repo clone OpenSIN-Code/Code-Swarm
 cd Code-Swarm
+cp configs/opencode.json ~/.config/opencode/opencode.json
+cp configs/oh-my-opencode.json ~/.config/opencode/oh-my-opencode.json
 
-# 2. Agenten-System initialisieren
-python cli/main.py init
-
-# 3. Task ausführen
-python cli/main.py run "Installiere Redis + Konfiguriere + Teste"
-
-# 4. Zustand inspizieren
-python cli/main.py inspect
+# 2. SIN-Zeus delegiert Tasks an Subagenten
+# Das passiert automatisch in opencode — kein extra CLI nötig!
 ```
 
 ## 📌 Modell-Hierarchie (von User bestätigt)
