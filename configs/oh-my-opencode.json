@@ -2,11 +2,19 @@
   "agents": {
     "hermes": {
       "role": "Dispatcher/Executor",
-      "model": "vercel/deepseek/deepseek-v4-flash",
+      "model": "fireworks-ai/minimax-m2.7",
       "fallback_model": "fireworks-ai/minimax-m2.7",
-      "tools": ["langgraph", "opencode", "docker"],
+      "tools": [
+        "langgraph",
+        "opencode",
+        "docker"
+      ],
       "output_format": "json",
-      "benchmarks": ["agentic_workflows", "swe_bench_pro", "terminal_bench_2.0"],
+      "benchmarks": [
+        "agentic_workflows",
+        "swe_bench_pro",
+        "terminal_bench_2.0"
+      ],
       "responsibilities": [
         "Task-Verteilung",
         "Workflow-Orchestrierung",
@@ -22,11 +30,17 @@
     },
     "prometheus": {
       "role": "System Planner",
-      "model": "vercel/deepseek/deepseek-v4-pro",
+      "model": "fireworks-ai/minimax-m2.7",
       "fallback_model": "fireworks-ai/minimax-m2.7",
-      "tools": ["langgraph", "opencode"],
+      "tools": [
+        "langgraph",
+        "opencode"
+      ],
       "output_format": "yaml",
-      "benchmarks": ["swe_bench_pro", "agentic_workflows"],
+      "benchmarks": [
+        "swe_bench_pro",
+        "agentic_workflows"
+      ],
       "responsibilities": [
         "Architektur-Design",
         "Lang-horizontale Planung",
@@ -42,11 +56,17 @@
     },
     "zeus": {
       "role": "Validation Superlayer",
-      "model": "vercel/deepseek/deepseek-v4-pro",
+      "model": "fireworks-ai/minimax-m2.7",
       "fallback_model": "fireworks-ai/minimax-m2.7",
-      "tools": ["opencode", "security-tools"],
+      "tools": [
+        "opencode",
+        "security-tools"
+      ],
       "output_format": "json",
-      "benchmarks": ["swe_bench_pro", "agentic_workflows"],
+      "benchmarks": [
+        "swe_bench_pro",
+        "agentic_workflows"
+      ],
       "responsibilities": [
         "Kritische Review",
         "Security-Audits",
@@ -64,9 +84,17 @@
       "role": "Backend Engineer",
       "model": "fireworks-ai/minimax-m2.7",
       "fallback_model": "vercel/deepseek/deepseek-v4-flash",
-      "tools": ["docker", "pytest", "opencode"],
+      "tools": [
+        "docker",
+        "pytest",
+        "opencode"
+      ],
       "output_format": "json",
-      "benchmarks": ["swe_bench_mini", "humaneval_x", "swe_bench_pro"],
+      "benchmarks": [
+        "swe_bench_mini",
+        "humaneval_x",
+        "swe_bench_pro"
+      ],
       "responsibilities": [
         "Backend-Entwicklung",
         "API-Design",
@@ -84,9 +112,16 @@
       "role": "Frontend Engineer",
       "model": "vercel/deepseek/deepseek-v4-flash",
       "fallback_model": "fireworks-ai/minimax-m2.7",
-      "tools": ["selenium", "playwright", "opencode"],
+      "tools": [
+        "selenium",
+        "playwright",
+        "opencode"
+      ],
       "output_format": "json",
-      "benchmarks": ["miniwob", "agentic_workflows"],
+      "benchmarks": [
+        "miniwob",
+        "agentic_workflows"
+      ],
       "responsibilities": [
         "Frontend-Entwicklung",
         "UI/UX-Implementierung",
@@ -104,9 +139,17 @@
       "role": "API Architect",
       "model": "vercel/deepseek/deepseek-v4-flash",
       "fallback_model": "fireworks-ai/minimax-m2.7",
-      "tools": ["postman", "pytest", "opencode"],
+      "tools": [
+        "postman",
+        "pytest",
+        "opencode"
+      ],
       "output_format": "json",
-      "benchmarks": ["swe_bench_mini", "humaneval_x", "swe_bench_pro"],
+      "benchmarks": [
+        "swe_bench_mini",
+        "humaneval_x",
+        "swe_bench_pro"
+      ],
       "responsibilities": [
         "API-Design",
         "Integration",
@@ -124,9 +167,16 @@
       "role": "Database Architect",
       "model": "vercel/deepseek/deepseek-v4-flash",
       "fallback_model": "fireworks-ai/minimax-m2.7",
-      "tools": ["docker", "sqlalchemy", "opencode"],
+      "tools": [
+        "docker",
+        "sqlalchemy",
+        "opencode"
+      ],
       "output_format": "json",
-      "benchmarks": ["swe_bench_mini", "sql_benchmarks"],
+      "benchmarks": [
+        "swe_bench_mini",
+        "sql_benchmarks"
+      ],
       "responsibilities": [
         "Datenbank-Design",
         "Migration",
@@ -144,13 +194,21 @@
       "role": "QA / Testing",
       "model": "vercel/deepseek/deepseek-v4-flash",
       "fallback_model": "fireworks-ai/minimax-m2.7",
-      "tools": ["pytest", "selenium", "opencode"],
+      "tools": [
+        "pytest",
+        "selenium",
+        "opencode"
+      ],
       "output_format": "json",
-      "benchmarks": ["swe_bench_mini", "humaneval_x", "swe_bench_pro"],
+      "benchmarks": [
+        "swe_bench_mini",
+        "humaneval_x",
+        "swe_bench_pro"
+      ],
       "responsibilities": [
         "Automatisierte Tests",
         "Edge Cases",
-        "Code-Qualität"
+        "Code-Qualit\u00e4t"
       ],
       "model_config": {
         "context_window": "128K",
@@ -164,9 +222,17 @@
       "role": "Strategic Researcher",
       "model": "vercel/deepseek/deepseek-v4-flash",
       "fallback_model": "fireworks-ai/minimax-m2.7",
-      "tools": ["webauto", "google_search", "opencode", "vector-db"],
+      "tools": [
+        "webauto",
+        "google_search",
+        "opencode",
+        "vector-db"
+      ],
       "output_format": "json",
-      "benchmarks": ["marktanalyse", "trends"],
+      "benchmarks": [
+        "marktanalyse",
+        "trends"
+      ],
       "responsibilities": [
         "High-Level Research",
         "Marktanalyse",
@@ -184,9 +250,17 @@
       "role": "Multi-Source Researcher",
       "model": "vercel/deepseek/deepseek-v4-flash",
       "fallback_model": "fireworks-ai/minimax-m2.7",
-      "tools": ["webauto", "google_search", "opencode"],
+      "tools": [
+        "webauto",
+        "google_search",
+        "opencode"
+      ],
       "output_format": "json",
-      "benchmarks": ["web_recherche", "foren", "social_media"],
+      "benchmarks": [
+        "web_recherche",
+        "foren",
+        "social_media"
+      ],
       "responsibilities": [
         "Web-Recherche",
         "Foren & Social Media",
@@ -204,9 +278,16 @@
       "role": "Technical Researcher",
       "model": "vercel/deepseek/deepseek-v4-flash",
       "fallback_model": "fireworks-ai/minimax-m2.7",
-      "tools": ["ast-grep", "lsp", "opencode"],
+      "tools": [
+        "ast-grep",
+        "lsp",
+        "opencode"
+      ],
       "output_format": "json",
-      "benchmarks": ["code_review", "architektur_review"],
+      "benchmarks": [
+        "code_review",
+        "architektur_review"
+      ],
       "responsibilities": [
         "Code-Analyse",
         "Architektur-Reviews",
@@ -224,9 +305,16 @@
       "role": "Fast Retriever",
       "model": "vercel/deepseek/deepseek-v4-flash",
       "fallback_model": "nvidia-nim/glm-5.1",
-      "tools": ["webauto", "api-calls", "opencode"],
+      "tools": [
+        "webauto",
+        "api-calls",
+        "opencode"
+      ],
       "output_format": "json",
-      "benchmarks": ["retrieval", "api_integration"],
+      "benchmarks": [
+        "retrieval",
+        "api_integration"
+      ],
       "responsibilities": [
         "Schnelle Datenabfragen",
         "API-Integration",
@@ -242,11 +330,20 @@
     },
     "multimedia_looker": {
       "role": "Vision/GUI Looker",
-      "model": "nvidia-nim/llama-3.2-11b-vision-instruct",
-      "fallback_model": "vercel/deepseek/deepseek-v4-pro",
-      "tools": ["opencode-vision", "selenium", "docker", "vision-gate"],
+      "model": "nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "fallback_model": "mistral/pixtral-large-latest",
+      "tools": [
+        "opencode-vision",
+        "selenium",
+        "docker",
+        "vision-gate"
+      ],
       "output_format": "json",
-      "benchmarks": ["vision_gui_grounding", "screen_spot", "mmmu_pro"],
+      "benchmarks": [
+        "vision_gui_grounding",
+        "screen_spot",
+        "mmmu_pro"
+      ],
       "responsibilities": [
         "Screenshots analysieren",
         "GUI-Elemente erkennen",
@@ -264,9 +361,16 @@
       "role": "Audio TTS/SST",
       "model": "groq/whisper-large-v3",
       "fallback_model": "nvidia-nim/whisper-large-v3",
-      "tools": ["whisper", "coqui-tts", "ffmpeg"],
+      "tools": [
+        "whisper",
+        "coqui-tts",
+        "ffmpeg"
+      ],
       "output_format": "json",
-      "benchmarks": ["audio_transcription", "tts_quality"],
+      "benchmarks": [
+        "audio_transcription",
+        "tts_quality"
+      ],
       "responsibilities": [
         "Sprache-zu-Text",
         "Text-zu-Sprache",
@@ -284,9 +388,16 @@
       "role": "Build Specialist",
       "model": "vercel/deepseek/deepseek-v4-flash",
       "fallback_model": "fireworks-ai/minimax-m2.7",
-      "tools": ["opencode", "docker", "build-tools"],
+      "tools": [
+        "opencode",
+        "docker",
+        "build-tools"
+      ],
       "output_format": "json",
-      "benchmarks": ["build_speed", "compilation"],
+      "benchmarks": [
+        "build_speed",
+        "compilation"
+      ],
       "responsibilities": [
         "Build-Optimierung",
         "Kompilierung",
@@ -304,9 +415,16 @@
       "role": "Build Specialist",
       "model": "vercel/deepseek/deepseek-v4-flash",
       "fallback_model": "fireworks-ai/minimax-m2.7",
-      "tools": ["opencode", "docker", "build-tools"],
+      "tools": [
+        "opencode",
+        "docker",
+        "build-tools"
+      ],
       "output_format": "json",
-      "benchmarks": ["build_speed", "compilation"],
+      "benchmarks": [
+        "build_speed",
+        "compilation"
+      ],
       "responsibilities": [
         "Build-Optimierung",
         "Kompilierung",
@@ -324,9 +442,16 @@
       "role": "Swarm Orchestrator",
       "model": "vercel/deepseek/deepseek-v4-flash",
       "fallback_model": "fireworks-ai/minimax-m2.7",
-      "tools": ["langgraph", "opencode", "swarm-tools"],
+      "tools": [
+        "langgraph",
+        "opencode",
+        "swarm-tools"
+      ],
       "output_format": "json",
-      "benchmarks": ["swarm_coordination", "parallel_execution"],
+      "benchmarks": [
+        "swarm_coordination",
+        "parallel_execution"
+      ],
       "responsibilities": [
         "Swarm-Orchestrierung",
         "Multi-Agent Koordination",
@@ -344,9 +469,16 @@
       "role": "Single-Agent Coder",
       "model": "fireworks-ai/minimax-m2.7",
       "fallback_model": "vercel/deepseek/deepseek-v4-flash",
-      "tools": ["opencode", "docker", "build-tools"],
+      "tools": [
+        "opencode",
+        "docker",
+        "build-tools"
+      ],
       "output_format": "json",
-      "benchmarks": ["single_task_execution", "code_quality"],
+      "benchmarks": [
+        "single_task_execution",
+        "code_quality"
+      ],
       "responsibilities": [
         "Direct Code Execution",
         "Single-File Changes",
@@ -364,9 +496,15 @@
       "role": "Plan Consultant",
       "model": "vercel/deepseek/deepseek-v4-flash",
       "fallback_model": "fireworks-ai/minimax-m2.7",
-      "tools": ["opencode", "langgraph"],
+      "tools": [
+        "opencode",
+        "langgraph"
+      ],
       "output_format": "json",
-      "benchmarks": ["planning_quality", "strategic_thinking"],
+      "benchmarks": [
+        "planning_quality",
+        "strategic_thinking"
+      ],
       "responsibilities": [
         "Planungs-Beratung",
         "Strategische Empfehlungen",
@@ -384,13 +522,19 @@
       "role": "Plan Critic",
       "model": "vercel/deepseek/deepseek-v4-flash",
       "fallback_model": "fireworks-ai/minimax-m2.7",
-      "tools": ["opencode", "langgraph"],
+      "tools": [
+        "opencode",
+        "langgraph"
+      ],
       "output_format": "json",
-      "benchmarks": ["critical_analysis", "error_detection"],
+      "benchmarks": [
+        "critical_analysis",
+        "error_detection"
+      ],
       "responsibilities": [
         "Plan-Kritik",
         "Schwachstellen-Analyse",
-        "Verbesserungs-Vorschläge"
+        "Verbesserungs-Vorschl\u00e4ge"
       ],
       "model_config": {
         "context_window": "1M",
@@ -404,9 +548,15 @@
       "role": "Deep Agent",
       "model": "fireworks-ai/minimax-m2.7",
       "fallback_model": "vercel/deepseek/deepseek-v4-pro",
-      "tools": ["opencode", "debugging-tools"],
+      "tools": [
+        "opencode",
+        "debugging-tools"
+      ],
       "output_format": "json",
-      "benchmarks": ["deep_analysis", "complex_debugging"],
+      "benchmarks": [
+        "deep_analysis",
+        "complex_debugging"
+      ],
       "responsibilities": [
         "Tiefgehende Analyse",
         "Komplexes Debugging",
