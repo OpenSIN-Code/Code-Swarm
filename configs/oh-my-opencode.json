@@ -1,7 +1,169 @@
 {
   "agents": {
+    "hermes": {
+      "role": "Dispatcher/Executor",
+      "model": "vercel/deepseek/deepseek-v4-flash",
+      "fallback_model": "fireworks-ai/minimax-m2.7",
+      "tools": ["langgraph", "opencode", "docker"],
+      "output_format": "json",
+      "benchmarks": ["agentic_workflows", "swe_bench_pro", "terminal_bench_2.0"],
+      "responsibilities": [
+        "Task-Verteilung",
+        "Workflow-Orchestrierung",
+        "Ergebnis-Konsolidierung"
+      ],
+      "model_config": {
+        "context_window": "1M",
+        "thinking_mode": true,
+        "tool_calls": 1000,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "prometheus": {
+      "role": "System Planner",
+      "model": "vercel/deepseek/deepseek-v4-pro",
+      "fallback_model": "fireworks-ai/minimax-m2.7",
+      "tools": ["langgraph", "opencode"],
+      "output_format": "yaml",
+      "benchmarks": ["swe_bench_pro", "agentic_workflows"],
+      "responsibilities": [
+        "Architektur-Design",
+        "Lang-horizontale Planung",
+        "Feedback-Loop-Design"
+      ],
+      "model_config": {
+        "context_window": "1M",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.6,
+        "top_p": 0.95
+      }
+    },
+    "zeus": {
+      "role": "Validation Superlayer",
+      "model": "vercel/deepseek/deepseek-v4-pro",
+      "fallback_model": "fireworks-ai/minimax-m2.7",
+      "tools": ["opencode", "security-tools"],
+      "output_format": "json",
+      "benchmarks": ["swe_bench_pro", "agentic_workflows"],
+      "responsibilities": [
+        "Kritische Review",
+        "Security-Audits",
+        "Future-proofing"
+      ],
+      "model_config": {
+        "context_window": "1M",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.5,
+        "top_p": 0.9
+      }
+    },
+    "atlas": {
+      "role": "Backend Engineer",
+      "model": "fireworks-ai/minimax-m2.7",
+      "fallback_model": "vercel/deepseek/deepseek-v4-flash",
+      "tools": ["docker", "pytest", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["swe_bench_mini", "humaneval_x", "swe_bench_pro"],
+      "responsibilities": [
+        "Backend-Entwicklung",
+        "API-Design",
+        "Datenbank-Schema"
+      ],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "iris": {
+      "role": "Frontend Engineer",
+      "model": "vercel/deepseek/deepseek-v4-flash",
+      "fallback_model": "fireworks-ai/minimax-m2.7",
+      "tools": ["selenium", "playwright", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["miniwob", "agentic_workflows"],
+      "responsibilities": [
+        "Frontend-Entwicklung",
+        "UI/UX-Implementierung",
+        "Interaktive Tests"
+      ],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "janus": {
+      "role": "API Architect",
+      "model": "vercel/deepseek/deepseek-v4-flash",
+      "fallback_model": "fireworks-ai/minimax-m2.7",
+      "tools": ["postman", "pytest", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["swe_bench_mini", "humaneval_x", "swe_bench_pro"],
+      "responsibilities": [
+        "API-Design",
+        "Integration",
+        "Testing"
+      ],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "hades": {
+      "role": "Database Architect",
+      "model": "vercel/deepseek/deepseek-v4-flash",
+      "fallback_model": "fireworks-ai/minimax-m2.7",
+      "tools": ["docker", "sqlalchemy", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["swe_bench_mini", "sql_benchmarks"],
+      "responsibilities": [
+        "Datenbank-Design",
+        "Migration",
+        "Optimierung"
+      ],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "asclepius": {
+      "role": "QA / Testing",
+      "model": "vercel/deepseek/deepseek-v4-flash",
+      "fallback_model": "fireworks-ai/minimax-m2.7",
+      "tools": ["pytest", "selenium", "opencode"],
+      "output_format": "json",
+      "benchmarks": ["swe_bench_mini", "humaneval_x", "swe_bench_pro"],
+      "responsibilities": [
+        "Automatisierte Tests",
+        "Edge Cases",
+        "Code-Qualität"
+      ],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
     "athena": {
       "role": "Strategic Researcher",
+      "model": "vercel/deepseek/deepseek-v4-flash",
+      "fallback_model": "fireworks-ai/minimax-m2.7",
       "tools": ["webauto", "google_search", "opencode", "vector-db"],
       "output_format": "json",
       "benchmarks": ["marktanalyse", "trends"],
@@ -10,7 +172,6 @@
         "Marktanalyse",
         "Trend-Identifikation"
       ],
-      "recommended_models": ["mistral/mistral-small-latest"],
       "model_config": {
         "context_window": "128K",
         "thinking_mode": true,
@@ -21,6 +182,8 @@
     },
     "argus": {
       "role": "Multi-Source Researcher",
+      "model": "vercel/deepseek/deepseek-v4-flash",
+      "fallback_model": "fireworks-ai/minimax-m2.7",
       "tools": ["webauto", "google_search", "opencode"],
       "output_format": "json",
       "benchmarks": ["web_recherche", "foren", "social_media"],
@@ -29,7 +192,6 @@
         "Foren & Social Media",
         "Quellen-Sammlung"
       ],
-      "recommended_models": ["mistral/mistral-small-latest"],
       "model_config": {
         "context_window": "128K",
         "thinking_mode": true,
@@ -40,6 +202,8 @@
     },
     "daedalus": {
       "role": "Technical Researcher",
+      "model": "vercel/deepseek/deepseek-v4-flash",
+      "fallback_model": "fireworks-ai/minimax-m2.7",
       "tools": ["ast-grep", "lsp", "opencode"],
       "output_format": "json",
       "benchmarks": ["code_review", "architektur_review"],
@@ -48,7 +212,6 @@
         "Architektur-Reviews",
         "Technische Dokumentation"
       ],
-      "recommended_models": ["mistral/mistral-small-latest"],
       "model_config": {
         "context_window": "128K",
         "thinking_mode": true,
@@ -59,6 +222,8 @@
     },
     "hermes_scout": {
       "role": "Fast Retriever",
+      "model": "vercel/deepseek/deepseek-v4-flash",
+      "fallback_model": "nvidia-nim/glm-5.1",
       "tools": ["webauto", "api-calls", "opencode"],
       "output_format": "json",
       "benchmarks": ["retrieval", "api_integration"],
@@ -67,7 +232,6 @@
         "API-Integration",
         "Retrieval"
       ],
-      "recommended_models": ["mistral/mistral-small-latest"],
       "model_config": {
         "context_window": "128K",
         "thinking_mode": true,
@@ -78,6 +242,8 @@
     },
     "multimedia_looker": {
       "role": "Vision/GUI Looker",
+      "model": "nvidia-nim/llama-3.2-11b-vision-instruct",
+      "fallback_model": "vercel/deepseek/deepseek-v4-pro",
       "tools": ["opencode-vision", "selenium", "docker", "vision-gate"],
       "output_format": "json",
       "benchmarks": ["vision_gui_grounding", "screen_spot", "mmmu_pro"],
@@ -86,7 +252,6 @@
         "GUI-Elemente erkennen",
         "Vision-Tasks"
       ],
-      "recommended_models": ["mimo-v2.5-pro", "magistral-medium-latest", "llama-3.2-11b-vision-instruct"],
       "model_config": {
         "context_window": "1M",
         "thinking_mode": true,
@@ -97,15 +262,16 @@
     },
     "audio_agent": {
       "role": "Audio TTS/SST",
+      "model": "groq/whisper-large-v3",
+      "fallback_model": "nvidia-nim/whisper-large-v3",
       "tools": ["whisper", "coqui-tts", "ffmpeg"],
       "output_format": "json",
-      "benchmarks": ["audio_tts_sst", "wer", "mos"],
+      "benchmarks": ["audio_transcription", "tts_quality"],
       "responsibilities": [
-        "Sprache → Text (SST)",
-        "Text → Sprache (TTS)",
-        "Audio-Transkription"
+        "Sprache-zu-Text",
+        "Text-zu-Sprache",
+        "Audio-Analyse"
       ],
-      "recommended_models": ["whisper-large-v3", "coqui-tts", "minimax-m2.5"],
       "model_config": {
         "context_window": "128K",
         "thinking_mode": false,
@@ -114,17 +280,78 @@
         "top_p": 0.9
       }
     },
-    "web_recherche_agent": {
-      "role": "Web Research",
-      "tools": ["webauto", "google_search", "opencode"],
+    "aegis": {
+      "role": "Build Specialist",
+      "model": "vercel/deepseek/deepseek-v4-flash",
+      "fallback_model": "fireworks-ai/minimax-m2.7",
+      "tools": ["opencode", "docker", "build-tools"],
       "output_format": "json",
-      "benchmarks": ["web_recherche"],
+      "benchmarks": ["build_speed", "compilation"],
       "responsibilities": [
-        "Google-Recherche",
-        "Foren & Social Media",
-        "Tiefen-Recherche"
+        "Build-Optimierung",
+        "Kompilierung",
+        "CI/CD Integration"
       ],
-      "recommended_models": ["mistral/mistral-small-latest"],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "apollo": {
+      "role": "Build Specialist",
+      "model": "vercel/deepseek/deepseek-v4-flash",
+      "fallback_model": "fireworks-ai/minimax-m2.7",
+      "tools": ["opencode", "docker", "build-tools"],
+      "output_format": "json",
+      "benchmarks": ["build_speed", "compilation"],
+      "responsibilities": [
+        "Build-Optimierung",
+        "Kompilierung",
+        "CI/CD Integration"
+      ],
+      "model_config": {
+        "context_window": "128K",
+        "thinking_mode": true,
+        "tool_calls": 500,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "omoc": {
+      "role": "Swarm Orchestrator",
+      "model": "vercel/deepseek/deepseek-v4-flash",
+      "fallback_model": "fireworks-ai/minimax-m2.7",
+      "tools": ["langgraph", "opencode", "swarm-tools"],
+      "output_format": "json",
+      "benchmarks": ["swarm_coordination", "parallel_execution"],
+      "responsibilities": [
+        "Swarm-Orchestrierung",
+        "Multi-Agent Koordination",
+        "Parallel Execution"
+      ],
+      "model_config": {
+        "context_window": "1M",
+        "thinking_mode": true,
+        "tool_calls": 1000,
+        "temperature": 0.7,
+        "top_p": 0.9
+      }
+    },
+    "sin-executor-solo": {
+      "role": "Single-Agent Coder",
+      "model": "fireworks-ai/minimax-m2.7",
+      "fallback_model": "vercel/deepseek/deepseek-v4-flash",
+      "tools": ["opencode", "docker", "build-tools"],
+      "output_format": "json",
+      "benchmarks": ["single_task_execution", "code_quality"],
+      "responsibilities": [
+        "Direct Code Execution",
+        "Single-File Changes",
+        "Deterministic Tasks"
+      ],
       "model_config": {
         "context_window": "128K",
         "thinking_mode": true,
@@ -134,72 +361,39 @@
       }
     },
     "metis": {
-      "role": "Optimization Planner",
-      "tools": ["langgraph", "opencode"],
-      "output_format": "yaml",
-      "benchmarks": ["performance_optimierung"],
+      "role": "Plan Consultant",
+      "model": "vercel/deepseek/deepseek-v4-flash",
+      "fallback_model": "fireworks-ai/minimax-m2.7",
+      "tools": ["opencode", "langgraph"],
+      "output_format": "json",
+      "benchmarks": ["planning_quality", "strategic_thinking"],
       "responsibilities": [
-        "Effizienz-Optimierung",
-        "Ressourcen-Management"
+        "Planungs-Beratung",
+        "Strategische Empfehlungen",
+        "Roadmap-Erstellung"
       ],
-      "recommended_models": ["mistral/mistral-small-latest"],
       "model_config": {
-        "context_window": "128K",
+        "context_window": "1M",
         "thinking_mode": true,
         "tool_calls": 500,
         "temperature": 0.6,
-        "top_p": 0.95
-      }
-    },
-    "themis": {
-      "role": "Constraint Planner",
-      "tools": ["langgraph", "opencode"],
-      "output_format": "yaml",
-      "benchmarks": ["security", "compliance"],
-      "responsibilities": [
-        "Regeln, Limits",
-        "Security, Compliance",
-        "Legal"
-      ],
-      "recommended_models": ["mistral/mistral-small-latest"],
-      "model_config": {
-        "context_window": "128K",
-        "thinking_mode": true,
-        "tool_calls": 500,
-        "temperature": 0.5,
         "top_p": 0.9
       }
     },
-    "apollo": {
-      "role": "UX/Product Planner",
-      "tools": ["selenium", "playwright", "opencode"],
-      "output_format": "yaml",
-      "benchmarks": ["ux_testing"],
-      "responsibilities": [
-        "Nutzerperspektive",
-        "UX-Design"
-      ],
-      "recommended_models": ["mistral/mistral-small-latest"],
-      "model_config": {
-        "context_window": "128K",
-        "thinking_mode": true,
-        "tool_calls": 500,
-        "temperature": 0.7,
-        "top_p": 0.9
-      }
-    },
-    "aegis": {
-      "role": "Security Auditor",
-      "tools": ["security-tools", "opencode"],
+    "momus": {
+      "role": "Plan Critic",
+      "model": "vercel/deepseek/deepseek-v4-flash",
+      "fallback_model": "fireworks-ai/minimax-m2.7",
+      "tools": ["opencode", "langgraph"],
       "output_format": "json",
-      "benchmarks": ["security_audits", "penetration_testing"],
+      "benchmarks": ["critical_analysis", "error_detection"],
       "responsibilities": [
-        "Sicherheitslücken",
-        "Penetration Testing"
+        "Plan-Kritik",
+        "Schwachstellen-Analyse",
+        "Verbesserungs-Vorschläge"
       ],
-      "recommended_models": ["mistral/mistral-small-latest"],
       "model_config": {
-        "context_window": "128K",
+        "context_window": "1M",
         "thinking_mode": true,
         "tool_calls": 500,
         "temperature": 0.5,
@@ -207,57 +401,23 @@
       }
     },
     "hephaestus": {
-      "role": "Engineering Reviewer",
-      "tools": ["linters", "formatters", "opencode"],
+      "role": "Deep Agent",
+      "model": "fireworks-ai/minimax-m2.7",
+      "fallback_model": "vercel/deepseek/deepseek-v4-pro",
+      "tools": ["opencode", "debugging-tools"],
       "output_format": "json",
-      "benchmarks": ["code_quality"],
+      "benchmarks": ["deep_analysis", "complex_debugging"],
       "responsibilities": [
-        "Code-Qualität",
-        "Best Practices"
+        "Tiefgehende Analyse",
+        "Komplexes Debugging",
+        "Deep Search"
       ],
-      "recommended_models": ["mistral/mistral-small-latest"],
       "model_config": {
-        "context_window": "128K",
+        "context_window": "1M",
         "thinking_mode": true,
         "tool_calls": 500,
         "temperature": 0.7,
         "top_p": 0.9
-      }
-    },
-    "chronos": {
-      "role": "Future-proofing",
-      "tools": ["diagramming-tools", "opencode"],
-      "output_format": "json",
-      "benchmarks": ["skalierbarkeit"],
-      "responsibilities": [
-        "Skalierbarkeit",
-        "Langzeit-Planung"
-      ],
-      "recommended_models": ["mistral/mistral-small-latest"],
-      "model_config": {
-        "context_window": "128K",
-        "thinking_mode": true,
-        "tool_calls": 500,
-        "temperature": 0.6,
-        "top_p": 0.95
-      }
-    },
-    "nemesis": {
-      "role": "Failure Finder",
-      "tools": ["chaos-tools", "opencode"],
-      "output_format": "json",
-      "benchmarks": ["chaos_engineering"],
-      "responsibilities": [
-        "Bricht alles absichtlich",
-        "Schwachstellen finden"
-      ],
-      "recommended_models": ["mistral/mistral-small-latest"],
-      "model_config": {
-        "context_window": "128K",
-        "thinking_mode": true,
-        "tool_calls": 500,
-        "temperature": 0.8,
-        "top_p": 0.95
       }
     }
   }
