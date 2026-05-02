@@ -1,0 +1,38 @@
+site_name: Code-Swarm
+site_description: SOTA Agent Swarm Architecture for OpenCode CLI
+site_url: https://opensincode.github.io/Code-Swarm
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+    - scheme: slate
+      primary: indigo
+      accent: cyan
+
+nav:
+  - Home: index.md
+  - Architecture:
+    - Overview: architecture/overview.md
+    - Agents: architecture/agents.md
+    - LangGraph Pipeline: architecture/langgraph.md
+  - API Reference:
+    - REST API: api/rest.md
+    - WebSocket: api/websocket.md
+  - Deployment:
+    - Kubernetes: deployment/kubernetes.md
+    - Monitoring: deployment/monitoring.md
+  - Development:
+    - Setup: development/setup.md
+    - Testing: development/testing.md
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - admonition
+  - codehilite
+
+plugins:
+  - search

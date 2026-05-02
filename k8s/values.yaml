@@ -1,0 +1,55 @@
+namespace: code-swarm
+
+replicas: 2
+
+image: opensincode/code-swarm:latest
+
+resources:
+  limits:
+    cpu: "2"
+    memory: 4Gi
+  requests:
+    cpu: "1"
+    memory: 2Gi
+
+autoscaling:
+  enabled: true
+  min_replicas: 2
+  max_replicas: 10
+  target_cpu_utilization: 70
+
+env:
+  - name: SWARM_MODE
+    value: "production"
+  - name: LOG_LEVEL
+    value: "info"
+  - name: DATABASE_URL
+    value: "postgresql://user:pass@postgres:5432/codeswarm"
+  - name: REDIS_URL
+    value: "redis://redis:6379"
+  - name: S3_BUCKET
+    value: "code-swarm-artifacts"
+  - name: JWT_SECRET
+    value: "change-me-in-production"
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: true
+  host: api.code-swarm.internal
+  tls: true
+
+monitoring:
+  prometheus: true
+  grafana: true
+  otel_endpoint: "http://otel-collector:4317"
+
+healthcheck:
+  liveness:
+    path: /health
+    initial_delay: 30
+  readiness:
+    path: /health
+    initial_delay: 10
