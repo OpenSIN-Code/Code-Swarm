@@ -581,7 +581,7 @@
     },
     "Coder-SIN-Qwen": {
       "mode": "primary",
-      "model": "fireworks-ai/qwen-3.6-plus",
+      "model": "vercel/deepseek-v4-flash",
       "description": "Qwen-powered coding agent - Alternative to Minimax M2.7 for specific coding tasks. Fast and efficient.",
       "permission": {
         "bash": "allow",
@@ -595,7 +595,7 @@
     },
     "Sin-Executor-Solo": {
       "mode": "primary",
-      "model": "fireworks-ai/minimax-m2.7",
+      "model": "vercel/deepseek-v4-pro",
       "description": "Single-agent coding executor for deterministic task processing without swarm orchestration. Direct local execution.",
       "permission": {
         "bash": "allow",
