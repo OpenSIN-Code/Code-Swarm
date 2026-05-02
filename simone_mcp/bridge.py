@@ -37,11 +37,16 @@ class SwarmSimoneBridge:
     """Bridge between Code-Swarm agents and Simone-MCP
 
     Every Code-Swarm agent gets simone-mcp capabilities via this bridge.
+    Supports both:
+    - Remote: OCI VM at http://92.5.60.87:8234 (production)
+    - Local: /Users/jeremy/dev/Simone-MCP (development)
     """
 
-    def __init__(self, simone_url: str = "http://localhost:8234", token: Optional[str] = None):
+    def __init__(self, simone_url: str = "http://localhost:8234", token: Optional[str] = None, local: bool = True):
         self.simone_url = simone_url
         self.token = token
+        self.local = local
+        self._local_path = "/Users/jeremy/dev/Simone-MCP"
 
     async def analyze_code(self, symbol: str, root: str = ".") -> dict:
         async with SimoneClient(self.simone_url, self.token) as client:
