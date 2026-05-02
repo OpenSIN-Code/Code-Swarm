@@ -42,11 +42,20 @@ class SwarmSimoneBridge:
     - Local: /Users/jeremy/dev/Simone-MCP (development)
     """
 
-    def __init__(self, simone_url: str = "http://localhost:8234", token: Optional[str] = None, local: bool = True):
+    def __init__(self, simone_url: str = "http://92.5.60.87:8234", token: Optional[str] = None, local: bool = False):
         self.simone_url = simone_url
         self.token = token
         self.local = local
         self._local_path = "/Users/jeremy/dev/Simone-MCP"
+        
+    def is_remote_available(self) -> bool:
+        """Check if remote Simone-MCP server is available."""
+        import urllib.request
+        try:
+            with urllib.request.urlopen(self.simone_url + "/health", timeout=5) as resp:
+                return resp.status == 200
+        except Exception:
+            return False
 
     async def analyze_code(self, symbol: str, root: str = ".") -> dict:
         async with SimoneClient(self.simone_url, self.token) as client:
