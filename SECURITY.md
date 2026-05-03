@@ -177,3 +177,37 @@ jobs:
    vercel env add ALLOWED_ORIGINS production
    vercel env add ENVIRONMENT production
    ```
+
+## 🚀 Vercel Deployment
+
+### Deployment Script
+
+```bash
+# Make executable
+chmod +x vercel-deploy.sh
+
+# Deploy to preview
+./vercel-deploy.sh preview
+
+# Deploy to production
+./vercel-deploy.sh production
+```
+
+### Required Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `SECRET_KEY` | Strong random secret | `python -c "import secrets; print(secrets.token_urlsafe(64))"` |
+| `ALLOWED_ORIGINS` | Comma-separated allowed origins | `https://app.opensin.ai,https://docs.opensin.ai` |
+| `ENVIRONMENT` | `production` or `preview` | `production` |
+| `VERCEL_TOKEN` | Vercel API token | `vercel token create` |
+
+### Post-Deployment Checklist
+
+1. [ ] Verify `/health` endpoint returns 200 OK
+2. [ ] Verify `/docs` Swagger UI is accessible
+3. [ ] Test authentication flow
+4. [ ] Verify CORS headers are correct
+5. [ ] Set up monitoring and alerts
+6. [ ] Configure custom domain
+7. [ ] Set up SSL certificates
