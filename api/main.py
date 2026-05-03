@@ -3,9 +3,9 @@ from fastapi import FastAPI, HTTPException, Depends, Request, WebSocket, Query, 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import WebSocketException
 from pydantic import BaseModel
+from contextlib import asynccontextmanager
 from typing import Optional
 from datetime import datetime, timezone
-import json
 import os
 import secrets
 import logging
@@ -17,7 +17,7 @@ from slowapi.errors import RateLimitExceeded
 from auth.security import AuthManager, RBACManager
 from monitoring.metrics import MetricsCollector, HealthChecker
 from streaming.websocket import manager as ws_manager, verify_ws_token
-
+from db.database import get_database, close_database
 
 logger = logging.getLogger("code-swarm.api")
 
@@ -25,9 +25,6 @@ logger = logging.getLogger("code-swarm.api")
 limiter = Limiter(key_func=get_remote_address)
 
 # --- Security configuration (CEO Audit fix) -----------------------------------
-# SECRET_KEY MUST be supplied via environment in production. We refuse to start
-# with the legacy hardcoded placeholder. In development, an ephemeral key is
-# generated on boot so local runs still work, but tokens won't survive restarts.
 _LEGACY_INSECURE_KEY = "code-swarm-secret-key-change-in-production"
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
 SECRET_KEY = os.getenv("SECRET_KEY", "").strip()
@@ -74,10 +71,24 @@ metrics = MetricsCollector(service_name="code-swarm-api")
 health = HealthChecker(base_dir=BASE_DIR)
 
 
+# Lifespan for database initialization
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    db = get_database()
+    await db.initialize()
+    logger.info("Database initialized at startup")
+    yield
+    # Shutdown
+    await close_database()
+    logger.info("Database closed at shutdown")
+
+
 app = FastAPI(
     title="Code-Swarm API",
-    description="SOTA Agent Swarm API with FastAPI + gRPC",
+    description="Production SOTA Agent Swarm API with PostgreSQL + LangGraph",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Add rate limiter to app state
@@ -93,11 +104,16 @@ app.add_middleware(
 )
 
 
+# ============================================================================
+# MODELS
+# ============================================================================
+
 class AgentCreate(BaseModel):
     name: str
     model: str
     role: str
     capabilities: Optional[list[str]] = []
+    metadata: Optional[dict] = None
 
 
 class TaskCreate(BaseModel):
@@ -105,6 +121,13 @@ class TaskCreate(BaseModel):
     description: Optional[str] = None
     priority: int = 5
     assigned_to: Optional[str] = None
+
+
+class TaskUpdate(BaseModel):
+    status: Optional[str] = None
+    result: Optional[dict] = None
+    error: Optional[str] = None
+    score: Optional[float] = None
 
 
 class TokenRequest(BaseModel):
@@ -117,22 +140,56 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class AgentResponse(BaseModel):
+    id: str
+    name: str
+    model: str
+    role: str
+    status: str
+    capabilities: list[str]
+
+
+class TaskResponse(BaseModel):
+    id: str
+    title: str
+    status: str
+    priority: int
+    assigned_to: Optional[str]
+    created_at: str
+
+
+# ============================================================================
+# HEALTH & METRICS
+# ============================================================================
+
 @app.get("/health")
 @limiter.limit("10/minute")
-def health_check(request: Request):
+async def health_check(request: Request):
     status = health.get_status()
     return {"status": "healthy" if status["healthy"] else "degraded", "details": status}
 
 
 @app.get("/metrics")
 @limiter.limit("5/minute")
-def get_metrics(request: Request):
-    return {"metrics": metrics.get_metrics()}
+async def get_metrics(request: Request):
+    db = get_database()
+    db_metrics = await db.get_metrics()
+    return {
+        "metrics": {
+            **metrics.get_metrics(),
+            **db_metrics
+        }
+    }
 
+
+# ============================================================================
+# AUTHENTICATION
+# ============================================================================
 
 @app.post("/auth/token", response_model=TokenResponse)
 @limiter.limit("5/minute")
-def login(request: Request, token_request: TokenRequest):
+async def login(request: Request, token_request: TokenRequest):
+    """Login and get JWT token."""
     user = auth_manager.authenticate(token_request.username, token_request.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -144,95 +201,185 @@ def login(request: Request, token_request: TokenRequest):
 
 @app.post("/auth/register")
 @limiter.limit("3/minute")
-def register(request: Request, username: str, password: str, role: str = "developer"):
+async def register(request: Request, username: str, password: str, role: str = "developer"):
+    """Register new user."""
     user = auth_manager.create_user(username, password, role)
     if not user:
         raise HTTPException(status_code=400, detail="User already exists")
     return {"username": user["username"], "role": user["role"]}
 
 
-@app.post("/agents")
+# ============================================================================
+# AGENTS
+# ============================================================================
+
+@app.post("/agents", response_model=AgentResponse)
 @limiter.limit("30/minute")
-def create_agent(request: Request, agent: AgentCreate):
-    agents_data = _load_agents()
-    for a in agents_data:
-        if a["name"] == agent.name:
-            raise HTTPException(status_code=400, detail="Agent already exists")
-    new_agent = {
-        "id": f"agent_{len(agents_data)+1}",
+async def create_agent(request: Request, agent: AgentCreate):
+    """Create a new agent."""
+    db = get_database()
+    try:
+        new_agent = await db.create_agent(
+            name=agent.name,
+            model=agent.model,
+            role=agent.role,
+            capabilities=agent.capabilities or [],
+            metadata=agent.metadata or {},
+        )
+        metrics.record_task(f"agent.create.{agent.role}", "success", 0.0)
+        return {
+            "id": new_agent.id,
+            "name": new_agent.name,
+            "model": new_agent.model,
+            "role": new_agent.role,
+            "status": new_agent.status,
+            "capabilities": new_agent.capabilities,
+        }
+    except Exception as e:
+        logger.error(f"Error creating agent: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/agents", response_model=list[AgentResponse])
+@limiter.limit("100/minute")
+async def list_agents(request: Request, role: Optional[str] = None):
+    """List all agents, optionally filtered by role."""
+    db = get_database()
+    agents = await db.list_agents(role=role)
+    return [
+        {
+            "id": a.id,
+            "name": a.name,
+            "model": a.model,
+            "role": a.role,
+            "status": a.status,
+            "capabilities": a.capabilities,
+        }
+        for a in agents
+    ]
+
+
+@app.get("/agents/{agent_id}", response_model=AgentResponse)
+@limiter.limit("100/minute")
+async def get_agent(request: Request, agent_id: str):
+    """Get agent by ID."""
+    db = get_database()
+    agent = await db.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return {
+        "id": agent.id,
         "name": agent.name,
         "model": agent.model,
         "role": agent.role,
+        "status": agent.status,
         "capabilities": agent.capabilities,
-        "status": "idle",
-        "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    agents_data.append(new_agent)
-    _save_agents(agents_data)
-    metrics.record_task(agent.name, "created", 0.0)
-    return new_agent
 
 
-@app.get("/agents")
-@limiter.limit("100/minute")
-def list_agents(request: Request):
-    return _load_agents()
+# ============================================================================
+# TASKS
+# ============================================================================
 
-
-@app.get("/agents/{agent_id}")
-@limiter.limit("100/minute")
-def get_agent(request: Request, agent_id: str):
-    agents = _load_agents()
-    for a in agents:
-        if a["id"] == agent_id:
-            return a
-    raise HTTPException(status_code=404, detail="Agent not found")
-
-
-@app.post("/tasks")
+@app.post("/tasks", response_model=TaskResponse)
 @limiter.limit("30/minute")
-def create_task(request: Request, task: TaskCreate):
-    tasks_data = _load_tasks()
-    new_task = {
-        "id": f"task_{len(tasks_data)+1}",
+async def create_task(request: Request, task: TaskCreate):
+    """Create a new task."""
+    db = get_database()
+    try:
+        new_task = await db.create_task(
+            title=task.title,
+            description=task.description,
+            priority=task.priority,
+            assigned_to=task.assigned_to,
+        )
+        metrics.record_task("task.create", "success", 0.0)
+        return {
+            "id": new_task.id,
+            "title": new_task.title,
+            "status": new_task.status,
+            "priority": new_task.priority,
+            "assigned_to": new_task.assigned_to,
+            "created_at": new_task.created_at,
+        }
+    except Exception as e:
+        logger.error(f"Error creating task: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/tasks", response_model=list[TaskResponse])
+@limiter.limit("100/minute")
+async def list_tasks(request: Request, status: Optional[str] = None, assigned_to: Optional[str] = None):
+    """List tasks with optional filters."""
+    db = get_database()
+    tasks = await db.list_tasks(status=status, assigned_to=assigned_to)
+    return [
+        {
+            "id": t.id,
+            "title": t.title,
+            "status": t.status,
+            "priority": t.priority,
+            "assigned_to": t.assigned_to,
+            "created_at": t.created_at,
+        }
+        for t in tasks
+    ]
+
+
+@app.get("/tasks/{task_id}", response_model=TaskResponse)
+@limiter.limit("100/minute")
+async def get_task(request: Request, task_id: str):
+    """Get task by ID."""
+    db = get_database()
+    task = await db.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {
+        "id": task.id,
         "title": task.title,
-        "description": task.description,
+        "status": task.status,
         "priority": task.priority,
         "assigned_to": task.assigned_to,
-        "status": "pending",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": task.created_at,
     }
-    tasks_data.append(new_task)
-    _save_tasks(tasks_data)
-    return new_task
 
 
-@app.get("/tasks")
-@limiter.limit("100/minute")
-def list_tasks(request: Request, status: Optional[str] = None):
-    tasks = _load_tasks()
-    if status:
-        tasks = [t for t in tasks if t["status"] == status]
-    return tasks
-
-
-@app.patch("/tasks/{task_id}")
+@app.patch("/tasks/{task_id}", response_model=TaskResponse)
 @limiter.limit("50/minute")
-def update_task(request: Request, task_id: str, status: str):
-    tasks = _load_tasks()
-    for task in tasks:
-        if task["id"] == task_id:
-            task["status"] = status
-            if status == "completed":
-                task["completed_at"] = datetime.now(timezone.utc).isoformat()
-            _save_tasks(tasks)
-            return task
-    raise HTTPException(status_code=404, detail="Task not found")
+async def update_task(request: Request, task_id: str, task_update: TaskUpdate):
+    """Update task status/result/error."""
+    db = get_database()
+    try:
+        updated_task = await db.update_task(
+            task_id,
+            status=task_update.status,
+            result=task_update.result,
+            error=task_update.error,
+            score=task_update.score,
+        )
+        if not updated_task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        metrics.record_task(f"task.update.{task_update.status}", "success", 0.0)
+        return {
+            "id": updated_task.id,
+            "title": updated_task.title,
+            "status": updated_task.status,
+            "priority": updated_task.priority,
+            "assigned_to": updated_task.assigned_to,
+            "created_at": updated_task.created_at,
+        }
+    except Exception as e:
+        logger.error(f"Error updating task: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
 
+
+# ============================================================================
+# WEBSOCKET STATS
+# ============================================================================
 
 @app.get("/ws/stats")
 @limiter.limit("10/minute")
-def get_websocket_stats(request: Request):
+async def get_websocket_stats(request: Request):
     """Get WebSocket connection statistics."""
     return {
         "total_connections": ws_manager.get_connection_count(),
@@ -244,30 +391,8 @@ def get_websocket_stats(request: Request):
 
 
 # ============================================================================
-# DATA PERSISTENCE HELPERS
+# DEPRECATED: Legacy JSON-based endpoints (for backward compat during migration)
+# These will be removed in v1.1.0
 # ============================================================================
 
-def _load_agents():
-    agents_file = Path(".code-swarm/agents.json")
-    if agents_file.exists():
-        return json.loads(agents_file.read_text())
-    return []
-
-
-def _save_agents(agents):
-    agents_file = Path(".code-swarm/agents.json")
-    agents_file.parent.mkdir(parents=True, exist_ok=True)
-    agents_file.write_text(json.dumps(agents, indent=2))
-
-
-def _load_tasks():
-    tasks_file = Path(".code-swarm/tasks.json")
-    if tasks_file.exists():
-        return json.loads(tasks_file.read_text())
-    return []
-
-
-def _save_tasks(tasks):
-    tasks_file = Path(".code-swarm/tasks.json")
-    tasks_file.parent.mkdir(parents=True, exist_ok=True)
-    tasks_file.write_text(json.dumps(tasks, indent=2))
+logger.info("Code-Swarm API v1.0.0 started with PostgreSQL persistence")
