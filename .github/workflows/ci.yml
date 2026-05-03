@@ -1,0 +1,33 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+env:
+  PYTHON_VERSION: "3.11"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+      - name: Install
+        run: pip install -r requirements.txt && pip install -r requirements-extra.txt && pip install pytest
+      - name: Import check
+        run: python -c "from api.main import app; print('api OK')" && python -c "from auth.security import AuthManager; print('auth OK')"
+      - name: Tests
+        run: python -m pytest tests/ -v --tb=short
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+      - name: Install
+        run: pip install mkdocs mkdocs-material
+      - name: Build
+        run: mkdocs build --strict
