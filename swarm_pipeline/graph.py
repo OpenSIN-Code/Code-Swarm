@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import TypedDict, List, Dict, Any, Optional
-from swarm_pipeline.recursive_link import RecursiveLink
+from swarm_pipeline.recursive_link import RecursiveMASBridge
 import asyncio
 import os
 from langgraph.graph import StateGraph, END
@@ -25,12 +25,13 @@ class LangGraphPipeline:
     """
 
     def __init__(self, vector_db=None, graph_db=None, simone_url: Optional[str] = None):
-        # RecursiveLink for latent state transformation across agents
-        import torch.nn as nn
-        self.recursive_link = RecursiveLink(input_dim=768, hidden_dim=2048)
-        self.agent_links = nn.ModuleList([
-            RecursiveLink(768, 2048) for _ in range(10)
-        ])
+        # RecursiveMAS Bridge: Inner/Outer links for all agents
+        AGENT_NAMES = [
+            "sin-zeus", "sin-solo", "coder-sin-swarm", "atlas", "hermes",
+            "prometheus", "zeus", "iris", "janus", "hades"
+        ]
+        agent_map = {name: i for i, name in enumerate(AGENT_NAMES)}
+        self.recursive_bridge = RecursiveMASBridge(agent_map, hidden_size=768)
         # Hybrid Memory
         if vector_db and graph_db:
             from memory.hybrid_retriever import HybridRetriever
