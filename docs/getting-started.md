@@ -29,8 +29,8 @@ Edit `.env` and set your values:
 SUPABASE_URL=postgresql://user:password@host:5432/code_swarm
 REDIS_URL=redis://localhost:6379/0
 
-# Simone-MCP
-SIMONE_MCP_URL=http://92.5.60.87:8234
+# Simone-MCP (set this to your own Simone-MCP host, no default fallback)
+SIMONE_MCP_URL=http://your-simone-host:8234
 # or for local development:
 # SIMONE_MCP_URL=http://localhost:8234
 

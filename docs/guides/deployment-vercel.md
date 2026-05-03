@@ -23,7 +23,7 @@ In Vercel dashboard → Settings → Environment Variables:
 SUPABASE_URL=postgresql://user:pass@db.supabase.co:5432/postgres
 SUPABASE_ANON_KEY=eyJhbGc...
 SUPABASE_SERVICE_KEY=eyJhbGc...
-SIMONE_MCP_URL=http://92.5.60.87:8234
+SIMONE_MCP_URL=http://your-simone-host:8234
 PRIMARY_MODEL=gpt-4
 VISION_MODEL=gpt-4-vision
 SECRET_KEY=your-random-secret-key

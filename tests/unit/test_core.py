@@ -4,48 +4,39 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from db.database import Database, Agent, Session, Task, TaskStatus, AgentStatus
+from db.database import Agent, Task, TaskStatus, AgentStatus
 from cache.redis import RedisCache
 from storage.s3 import S3Storage
 from vector.vector_db import VectorDB
 from auth.security import AuthManager, RBACManager
 
 
-class TestDatabase:
-    def test_create_agent(self):
-        db = Database(base_dir="/tmp/test-code-swarm-db")
-        agent = db.create_agent(name="test-agent", model="test-model", role="planner")
+class TestDataclasses:
+    """Smoke-test the public dataclasses exposed by db.database.
+
+    The Database class itself is async + PostgreSQL-backed, see
+    tests/integration/test_database.py for the connection-level tests.
+    """
+
+    def test_agent_defaults(self):
+        agent = Agent(name="test-agent", model="test-model", role="planner")
         assert agent.name == "test-agent"
-        assert agent.model == "test-model"
-        assert agent.role == "planner"
+        assert agent.status == "idle"
+        assert agent.id  # auto-generated UUID
+        assert isinstance(agent.capabilities, list)
 
-    def test_get_agent(self):
-        db = Database(base_dir="/tmp/test-code-swarm-db2")
-        agent = db.create_agent(name="test-agent-2", model="test-model", role="executor")
-        found = db.get_agent(agent.id)
-        assert found is not None
-        assert found.name == "test-agent-2"
-
-    def test_create_session(self):
-        db = Database(base_dir="/tmp/test-code-swarm-db3")
-        session = db.create_session(swarm_id="test-swarm")
-        assert session.swarm_id == "test-swarm"
-        assert session.status == "active"
-
-    def test_create_task(self):
-        db = Database(base_dir="/tmp/test-code-swarm-db4")
-        task = db.create_task(title="Test Task", priority=3)
+    def test_task_defaults(self):
+        task = Task(title="Test Task", priority=3)
         assert task.title == "Test Task"
         assert task.priority == 3
-        assert task.status == TaskStatus.PENDING
+        assert task.status == "pending"
+        assert task.id  # auto-generated UUID
 
-    def test_get_metrics(self):
-        db = Database(base_dir="/tmp/test-code-swarm-db5")
-        db.create_agent(name="agent-1", model="m1", role="planner")
-        db.create_session(swarm_id="swarm-1")
-        metrics = db.get_metrics()
-        assert metrics["total_agents"] >= 1
-        assert metrics["active_sessions"] >= 1
+    def test_status_enums(self):
+        assert TaskStatus.PENDING.value == "pending"
+        assert TaskStatus.COMPLETED.value == "completed"
+        assert AgentStatus.IDLE.value == "idle"
+        assert AgentStatus.ACTIVE.value == "active"
 
 
 class TestRedisCache:
@@ -117,17 +108,15 @@ class TestVectorDB:
 
 
 class TestAuthManager:
-    @pytest.mark.skip(reason="bcrypt library incompatibility with Python 3.14 on this system")
-    def test_create_and_authenticate_user(self):
-        auth = AuthManager(secret_key="test-secret-key-123")
+    def test_create_and_authenticate_user(self, tmp_path):
+        auth = AuthManager(secret_key="test-secret-key-123", base_dir=tmp_path)
         user = auth.create_user("testuser", "testpassword", role="developer")
         assert user is not None
         authenticated = auth.authenticate("testuser", "testpassword")
         assert authenticated is not None
 
-    @pytest.mark.skip(reason="bcrypt library incompatibility with Python 3.14 on this system")
-    def test_create_and_verify_token(self):
-        auth = AuthManager(secret_key="test-secret-key-456")
+    def test_create_and_verify_token(self, tmp_path):
+        auth = AuthManager(secret_key="test-secret-key-456", base_dir=tmp_path)
         auth.create_user("tokenuser", "password", role="developer")
         token = auth.create_access_token({"sub": "tokenuser"})
         payload = auth.verify_token(token)

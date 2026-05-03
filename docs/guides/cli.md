@@ -255,7 +255,7 @@ code-swarm config show
 
 Output:
 SUPABASE_URL: postgresql://...
-SIMONE_MCP_URL: http://92.5.60.87:8234
+SIMONE_MCP_URL: http://your-simone-host:8234
 PRIMARY_MODEL: gpt-4
 ENVIRONMENT: production
 ```
@@ -274,7 +274,7 @@ The CLI respects all environment variables defined in `.env`:
 
 ```bash
 export SUPABASE_URL=postgresql://...
-export SIMONE_MCP_URL=http://92.5.60.87:8234
+export SIMONE_MCP_URL=http://your-simone-host:8234
 export PRIMARY_MODEL=gpt-4
 export SECRET_KEY=your-secret-key
 ```
