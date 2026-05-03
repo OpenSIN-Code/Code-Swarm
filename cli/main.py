@@ -3,367 +3,325 @@ import typer
 from typing import Optional, List
 from rich.console import Console
 from rich.table import Table
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn, TimeElapsedColumn
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn, TimeElapsedColumn, track
 from rich.panel import Panel
 from rich.tree import Tree
 from rich.syntax import Syntax
 from rich.markdown import Markdown
+from rich.align import Align
+from rich.text import Text
 from pathlib import Path
 import json
 import sys
 import time
 import subprocess
+import requests
+import os
+from datetime import datetime
 
 app = typer.Typer(
     name="code-swarm",
     help="🚀 Code-Swarm CLI - Multi-Agent Swarm Orchestration System",
     add_completion=True,
-    rich_markup_mode="rich"
+    rich_markup_mode="rich",
+    pretty_exceptions_enable=True
 )
+
 console = Console()
+API_BASE_URL = os.getenv("API_URL", "http://localhost:8000")
+
 
 def check_api_gateway() -> bool:
-    import socket
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    result = sock.connect_ex(('localhost', 8000))
-    sock.close()
-    return result == 0
+    """Check if API gateway is running."""
+    try:
+        response = requests.get(f"{API_BASE_URL}/health", timeout=2)
+        return response.status_code == 200
+    except Exception:
+        return False
+
 
 def check_grpc_server() -> bool:
+    """Check if gRPC server is running."""
     import socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     result = sock.connect_ex(('localhost', 50051))
     sock.close()
     return result == 0
 
+
+def get_api_token() -> Optional[str]:
+    """Get API token from environment or cache."""
+    token = os.getenv("CODE_SWARM_TOKEN")
+    if not token:
+        token_file = Path.home() / ".code-swarm" / "token"
+        if token_file.exists():
+            token = token_file.read_text().strip()
+    return token
+
+
+def save_api_token(token: str):
+    """Save API token to cache."""
+    token_file = Path.home() / ".code-swarm" / "token"
+    token_file.parent.mkdir(parents=True, exist_ok=True)
+    token_file.write_text(token)
+    token_file.chmod(0o600)
+
+
+def api_get(endpoint: str, headers: Optional[dict] = None) -> dict:
+    """Make GET request to API."""
+    try:
+        url = f"{API_BASE_URL}{endpoint}"
+        h = {"Authorization": f"Bearer {get_api_token()}"} if not headers else headers
+        response = requests.get(url, headers=h, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        console.print(f"[red]✗ API Error: {e}[/red]")
+        raise typer.Exit(code=1)
+
+
+def api_post(endpoint: str, data: dict, headers: Optional[dict] = None) -> dict:
+    """Make POST request to API."""
+    try:
+        url = f"{API_BASE_URL}{endpoint}"
+        h = {"Authorization": f"Bearer {get_api_token()}"} if not headers else headers
+        response = requests.post(url, json=data, headers=h, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        console.print(f"[red]✗ API Error: {e}[/red]")
+        raise typer.Exit(code=1)
+
+
 @app.command()
 def status():
     """📊 Show Code-Swarm system status with health checks"""
     console.print(Panel("[bold cyan]Code-Swarm Status[/bold cyan]", expand=False))
     
-    health_file = Path(".code-swarm/health.json")
-    
     tree = Tree("🐳 System Health")
     
-    api_gateway = tree.add("✅ [green]API Gateway[/green] (port 8000)")
-    if check_api_gateway():
-        api_gateway.add("[green]● Running[/green]")
-    else:
-        api_gateway.add("[red]● Not running[/red]")
+    # API Gateway
+    api_running = check_api_gateway()
+    api_status = tree.add("[green]✓ API Gateway[/green]" if api_running else "[red]✗ API Gateway[/red]")
+    api_status.add(f"[green]● Running[/green] ({API_BASE_URL})" if api_running else "[red]● Stopped[/red]")
     
-    grpc_server = tree.add("✅ [green]gRPC Server[/green] (port 50051)")
-    if check_grpc_server():
-        grpc_server.add("[green]● Running[/green]")
-    else:
-        grpc_server.add("[red]● Not running[/red]")
+    # gRPC Server
+    grpc_running = check_grpc_server()
+    grpc_status = tree.add("[green]✓ gRPC Server[/green]" if grpc_running else "[red]✗ gRPC Server[/red]")
+    grpc_status.add("[green]● Running[/green] (localhost:50051)" if grpc_running else "[red]● Stopped[/red]")
     
     console.print(tree)
     
-    agents_file = Path(".code-swarm/agents.json")
-    tasks_file = Path(".code-swarm/tasks.json")
-    grpc_health = Path(".code-swarm/grpc_health")
-    
-    agents = []
-    tasks = []
-    if agents_file.exists():
-        agents = json.loads(agents_file.read_text())
-    if tasks_file.exists():
-        tasks = json.loads(tasks_file.read_text())
-    
-    if grpc_health.exists():
-        console.print(f"\n[dim]gRPC Health: {grpc_health.read_text()}[/dim]")
-    
-    console.print(f"\n[bold]Statistics:[/bold]")
-    console.print(f"  • [cyan]Agents:[/cyan] {len(agents)}")
-    console.print(f"  • [yellow]Tasks:[/yellow] {len(tasks)}")
-    
-    pending = len([t for t in tasks if t.get("status") == "pending"])
-    completed = len([t for t in tasks if t.get("status") == "completed"])
-    console.print(f"  • [green]Completed:[/green] {completed}")
-    console.print(f"  • [red]Pending:[/red] {pending}")
+    # API Statistics
+    if api_running:
+        try:
+            stats = api_get("/metrics")
+            console.print(f"\n[bold cyan]Statistics:[/bold cyan]")
+            console.print(f"  • [cyan]Agents:[/cyan] {stats.get('metrics', {}).get('total_agents', 0)}")
+            console.print(f"  • [yellow]Tasks:[/yellow] {stats.get('metrics', {}).get('total_tasks', 0)}")
+            console.print(f"  • [green]Avg Task Duration:[/green] {stats.get('metrics', {}).get('avg_task_duration', 'N/A')}")
+        except Exception:
+            pass
+
 
 @app.command()
-def agents():
-    """🤖 List all active agents with their models and status"""
-    agents_file = Path(".code-swarm/agents.json")
-    if not agents_file.exists():
-        console.print("[red]✗ No agents found. Run 'code-swarm init' first.[/red]")
+def agents(
+    role: Optional[str] = typer.Option(None, "--role", help="Filter by agent role"),
+    status_filter: Optional[str] = typer.Option(None, "--status", help="Filter by status")
+):
+    """🤖 List all active agents with details"""
+    try:
+        agents_data = api_get("/agents")
+        
+        # Filter
+        if role:
+            agents_data = [a for a in agents_data if a.get("role") == role]
+        if status_filter:
+            agents_data = [a for a in agents_data if a.get("status") == status_filter]
+        
+        if not agents_data:
+            console.print("[yellow]No agents found[/yellow]")
+            return
+        
+        # Table
+        table = Table(title=f"[bold cyan]🤖 Agents ({len(agents_data)})[/bold cyan]", show_header=True, header_style="bold magenta")
+        table.add_column("ID", style="cyan", no_wrap=True)
+        table.add_column("Name", style="cyan")
+        table.add_column("Model", style="magenta")
+        table.add_column("Role", style="green")
+        table.add_column("Status", style="yellow")
+        table.add_column("Created", style="dim")
+        
+        for agent in agents_data:
+            status_icon = "🟢" if agent.get("status") == "active" else "⚪"
+            table.add_row(
+                agent.get("id", "N/A"),
+                agent.get("name", "N/A"),
+                agent.get("model", "N/A"),
+                agent.get("role", "N/A"),
+                f"{status_icon} {agent.get('status', 'N/A')}",
+                agent.get("created_at", "N/A")[:10]
+            )
+        
+        console.print(table)
+    except Exception as e:
+        console.print(f"[red]✗ Error: {e}[/red]")
         raise typer.Exit(code=1)
-    
-    agents = json.loads(agents_file.read_text())
-    
-    table = Table(title="[bold cyan]🤖 Code-Swarm Agents[/bold cyan]", show_header=True, header_style="bold magenta")
-    table.add_column("Name", style="cyan", no_wrap=True)
-    table.add_column("Model", style="magenta")
-    table.add_column("Role", style="green")
-    table.add_column("Status", style="yellow")
-    table.add_column("Created", style="dim")
-    
-    for agent in agents:
-        status = agent.get("status", "unknown")
-        status_style = "[green]● idle[/green]" if status == "idle" else "[yellow]● working[/yellow]"
-        table.add_row(
-            f"[bold]{agent.get('name', '')}[/bold]",
-            agent.get("model", ""),
-            agent.get("role", ""),
-            status_style,
-            agent.get("created_at", "")[:10]
-        )
-    
-    console.print(table)
+
 
 @app.command()
 def tasks(
-    status_filter: Optional[str] = typer.Option(None, "--status", "-s", help="Filter by status (pending/in_progress/completed)"),
-    priority: Optional[int] = typer.Option(None, "--priority", "-p", help="Filter by minimum priority"),
-    assigned_to: Optional[str] = typer.Option(None, "--assigned", "-a", help="Filter by assigned agent")
+    status_filter: Optional[str] = typer.Option(None, "--status", help="Filter by status (pending, active, completed)")
 ):
-    """📋 List and filter tasks with rich formatting"""
-    tasks_file = Path(".code-swarm/tasks.json")
-    if not tasks_file.exists():
-        console.print("[red]✗ No tasks found.[/red]")
+    """📋 List all tasks with status"""
+    try:
+        tasks_data = api_get("/tasks")
+        
+        if status_filter:
+            tasks_data = [t for t in tasks_data if t.get("status") == status_filter]
+        
+        if not tasks_data:
+            console.print("[yellow]No tasks found[/yellow]")
+            return
+        
+        # Table
+        table = Table(title=f"[bold cyan]📋 Tasks ({len(tasks_data)})[/bold cyan]", show_header=True, header_style="bold magenta")
+        table.add_column("ID", style="cyan", no_wrap=True)
+        table.add_column("Title", style="white")
+        table.add_column("Status", style="yellow")
+        table.add_column("Priority", style="red")
+        table.add_column("Assigned", style="green")
+        table.add_column("Created", style="dim")
+        
+        for task in tasks_data:
+            status_icon = "🟢" if task.get("status") == "completed" else "🟡" if task.get("status") == "active" else "⚪"
+            table.add_row(
+                task.get("id", "N/A"),
+                task.get("title", "N/A")[:40],
+                f"{status_icon} {task.get('status', 'N/A')}",
+                str(task.get("priority", "N/A")),
+                task.get("assigned_to", "Unassigned"),
+                task.get("created_at", "N/A")[:10]
+            )
+        
+        console.print(table)
+    except Exception as e:
+        console.print(f"[red]✗ Error: {e}[/red]")
         raise typer.Exit(code=1)
-    
-    tasks = json.loads(tasks_file.read_text())
-    
-    if status_filter:
-        tasks = [t for t in tasks if t.get("status") == status_filter]
-    if priority:
-        tasks = [t for t in tasks if t.get("priority", 0) >= priority]
-    if assigned_to:
-        tasks = [t for t in tasks if t.get("assigned_to") == assigned_to]
-    
-    if not tasks:
-        console.print("[yellow]⚠ No tasks match your filters.[/yellow]")
-        return
-    
-    table = Table(
-        title=f"[bold cyan]📋 Tasks[/bold cyan] ({len(tasks)} found)",
-        show_header=True,
-        header_style="bold green"
-    )
-    table.add_column("ID", style="cyan", no_wrap=True)
-    table.add_column("Title", style="white")
-    table.add_column("Priority", style="yellow", justify="center")
-    table.add_column("Status", style="green")
-    table.add_column("Assigned To", style="magenta")
-    
-    for task in tasks:
-        status = task.get("status", "pending")
-        status_color = "[green]●[/green]" if status == "completed" else "[yellow]●[/yellow]"
-        table.add_row(
-            task.get("id", ""),
-            task.get("title", "")[:35] + ("..." if len(task.get("title", "")) > 35 else ""),
-            str(task.get("priority", 5)),
-            f"{status_color} {status}",
-            task.get("assigned_to", "[dim]unassigned[/dim]")
-        )
-    
-    console.print(table)
+
 
 @app.command()
-def run(
-    task_id: str = typer.Argument(..., help="Task ID to execute"),
-    agent: Optional[str] = typer.Option(None, "--agent", "-a", help="Specific agent to use")
+def create_task(
+    title: str = typer.Argument(..., help="Task title"),
+    description: Optional[str] = typer.Option(None, "--desc", help="Task description"),
+    priority: int = typer.Option(5, "--priority", min=1, max=10, help="Priority 1-10"),
+    assigned_to: Optional[str] = typer.Option(None, "--assign", help="Assign to agent")
 ):
-    """🚀 Execute a task with real-time progress tracking"""
-    console.print(f"[cyan]▶ Executing task:[/cyan] [bold]{task_id}[/bold]")
-    
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(bar_width=40),
-        TimeElapsedColumn(),
-        TimeRemainingColumn(),
-        console=console,
-    ) as progress:
-        stages = [
-            "Initializing agent",
-            "Fetching task context",
-            "Analyzing requirements",
-            "Executing implementation",
-            "Running tests",
-            "Validating results",
-            "Cleaning up",
-        ]
-        
-        for stage in stages:
-            work = progress.add_task(f"[cyan]{stage}...[/cyan]", total=100)
-            for i in range(100):
-                time.sleep(0.02)
-                progress.update(work, advance=1)
-    
-    console.print("\n[bold green]✓ Task completed successfully![/bold green]")
-
-@app.command()
-def init():
-    """初始化 Code-Swarm workspace with sample data"""
-    console.print("[cyan]Initializing Code-Swarm workspace...[/cyan]")
-    
-    Path(".code-swarm").mkdir(exist_ok=True)
-    
-    agents_data = [
-        {
-            "id": "agent_1",
-            "name": "sin-zeus",
-            "model": "fireworks-ai/minimax-m2.7",
-            "role": "fleet-commander",
-            "capabilities": ["planning", "orchestration", "dispatch"],
-            "status": "idle",
-            "created_at": "2026-05-03T00:00:00+00:00"
-        },
-        {
-            "id": "agent_2",
-            "name": "sin-solo",
-            "model": "vercel/deepseek-v4-pro",
-            "role": "executor",
-            "capabilities": ["coding", "testing", "review"],
-            "status": "idle",
-            "created_at": "2026-05-03T00:00:00+00:00"
-        },
-        {
-            "id": "agent_3",
-            "name": "coder-sin-swarm",
-            "model": "fireworks-ai/minimax-m2.7",
-            "role": "coder",
-            "capabilities": ["implementation", "debugging"],
-            "status": "idle",
-            "created_at": "2026-05-03T00:00:00+00:00"
+    """➕ Create a new task"""
+    try:
+        task_data = {
+            "title": title,
+            "description": description,
+            "priority": priority,
+            "assigned_to": assigned_to
         }
-    ]
-    
-    tasks_data = [
-        {
-            "id": "task_1",
-            "title": "Implement WebSocket streaming for real-time agent status",
-            "priority": 1,
-            "assigned_to": "sin-solo",
-            "status": "completed",
-            "created_at": "2026-05-03T00:00:00+00:00"
-        },
-        {
-            "id": "task_2",
-            "title": "Create Kubernetes deployment configs",
-            "priority": 2,
-            "assigned_to": "coder-sin-swarm",
-            "status": "in_progress",
-            "created_at": "2026-05-03T00:00:00+00:00"
-        },
-        {
-            "id": "task_3",
-            "title": "Add Rich CLI output with progress bars",
-            "priority": 3,
-            "assigned_to": None,
-            "status": "pending",
-            "created_at": "2026-05-03T00:00:00+00:00"
-        }
-    ]
-    
-    Path(".code-swarm/agents.json").write_text(json.dumps(agents_data, indent=2))
-    Path(".code-swarm/tasks.json").write_text(json.dumps(tasks_data, indent=2))
-    
-    console.print("[bold green]✓ Workspace initialized![/bold green]")
-    console.print(f"   • {len(agents_data)} agents created")
-    console.print(f"   • {len(tasks_data)} tasks created")
-
-@app.command()
-def deploy(
-    target: str = typer.Option("local", "--target", "-t", help="Deployment target (local/k8s/oci)"),
-    replicas: int = typer.Option(2, "--replicas", "-r", help="Number of replicas")
-):
-    """☸️ Deploy Code-Swarm to k3s or local environment"""
-    console.print(f"[cyan]☸ Deploying to {target}...[/cyan]")
-    
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        console=console,
-    ) as progress:
-        stages = [
-            f"Validating k3s cluster",
-            "Building Docker images",
-            "Pushing to registry",
-            "Installing Helm chart",
-            f"Scaling to {replicas} replicas",
-            "Configuring ingress",
-            "Setting up monitoring",
-        ]
         
-        for stage in stages:
-            work = progress.add_task(f"[cyan]{stage}...[/cyan]", total=100)
-            for i in range(100):
-                time.sleep(0.01)
-                progress.update(work, advance=1)
-    
-    console.print("\n[bold green]✓ Deployment successful![/bold green]")
-    console.print(f"   • Target: {target}")
-    console.print(f"   • Replicas: {replicas}")
-    console.print("   • Endpoints:")
-    console.print("     - API: http://localhost:8000")
-    console.print("     - gRPC: localhost:50051")
-    console.print("     - Swagger: http://localhost:8000/docs")
+        with console.status("[bold cyan]Creating task...[/bold cyan]"):
+            result = api_post("/tasks", task_data)
+        
+        console.print(f"[green]✓ Task created: {result.get('id')}[/green]")
+        console.print(Panel(
+            f"[cyan]Title:[/cyan] {result.get('title')}\n"
+            f"[yellow]Status:[/yellow] {result.get('status')}\n"
+            f"[magenta]Priority:[/magenta] {result.get('priority')}/10",
+            title="[bold]Task Details[/bold]"
+        ))
+    except Exception as e:
+        console.print(f"[red]✗ Error creating task: {e}[/red]")
+        raise typer.Exit(code=1)
+
 
 @app.command()
-def logs(
-    component: str = typer.Argument(..., help="Component to view logs (api-gateway/agents/simone-mcp)"),
-    lines: int = typer.Option(50, "--lines", "-n", help="Number of lines to show"),
-    follow: bool = typer.Option(False, "--follow", "-f", help="Follow log output")
+def create_agent(
+    name: str = typer.Argument(..., help="Agent name"),
+    model: str = typer.Option("gpt-4", "--model", help="Model to use"),
+    role: str = typer.Option("backend", "--role", help="Agent role"),
+    capabilities: Optional[str] = typer.Option(None, "--cap", help="Comma-separated capabilities")
 ):
-    """📜 View real-time logs with syntax highlighting"""
-    console.print(f"[cyan]📜 Viewing logs for:[/cyan] [bold]{component}[/bold]")
-    
-    sample_logs = [
-        "[2026-05-03 12:00:00] INFO: Agent sin-zeus started",
-        "[2026-05-03 12:00:01] DEBUG: WebSocket connection established",
-        "[2026-05-03 12:00:02] INFO: Processing task task_1",
-        "[2026-05-03 12:00:03] DEBUG: gRPC call to agent-workers",
-        "[2026-05-03 12:00:04] INFO: Task task_1 completed successfully",
-    ]
-    
-    for log in sample_logs[-lines:]:
-        console.print(f"[dim]{log}[/dim]")
-    
-    if follow:
-        console.print("\n[yellow]Following logs... (Ctrl+C to stop)[/yellow]")
-        time.sleep(5)
+    """➕ Create a new agent"""
+    try:
+        agent_data = {
+            "name": name,
+            "model": model,
+            "role": role,
+            "capabilities": capabilities.split(",") if capabilities else []
+        }
+        
+        with console.status("[bold cyan]Creating agent...[/bold cyan]"):
+            result = api_post("/agents", agent_data)
+        
+        console.print(f"[green]✓ Agent created: {result.get('id')}[/green]")
+        console.print(Panel(
+            f"[cyan]Name:[/cyan] {result.get('name')}\n"
+            f"[magenta]Model:[/magenta] {result.get('model')}\n"
+            f"[green]Role:[/green] {result.get('role')}",
+            title="[bold]Agent Details[/bold]"
+        ))
+    except Exception as e:
+        console.print(f"[red]✗ Error creating agent: {e}[/red]")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def login(
+    username: str = typer.Argument(..., help="Username"),
+    password: str = typer.Option(..., "--password", "-p", prompt=True, hide_input=True, help="Password")
+):
+    """🔐 Login to Code-Swarm and save token"""
+    try:
+        with console.status("[bold cyan]Authenticating...[/bold cyan]"):
+            response = requests.post(
+                f"{API_BASE_URL}/auth/token",
+                json={"username": username, "password": password},
+                timeout=10
+            )
+            response.raise_for_status()
+            data = response.json()
+        
+        token = data.get("access_token")
+        save_api_token(token)
+        console.print(f"[green]✓ Logged in as {username}[/green]")
+        console.print(f"[dim]Token saved to ~/.code-swarm/token[/dim]")
+    except Exception as e:
+        console.print(f"[red]✗ Authentication failed: {e}[/red]")
+        raise typer.Exit(code=1)
+
 
 @app.command()
 def health():
-    """💚 Run comprehensive health checks"""
-    console.print(Panel("[bold green]Code-Swarm Health Check[/bold green]", expand=False))
+    """🏥 Perform comprehensive health check"""
+    console.print(Panel("[bold cyan]Health Check[/bold cyan]", expand=False))
     
     checks = [
-        ("API Gateway", check_api_gateway),
-        ("gRPC Server", check_grpc_server),
-        ("Agents Data", lambda: Path(".code-swarm/agents.json").exists()),
-        ("Tasks Data", lambda: Path(".code-swarm/tasks.json").exists()),
-        ("Health File", lambda: Path(".code-swarm/health.json").exists()),
+        ("API Gateway", lambda: requests.get(f"{API_BASE_URL}/health", timeout=2)),
+        ("Database", lambda: api_get("/metrics")),
+        ("gRPC Server", lambda: check_grpc_server())
     ]
     
-    table = Table(show_header=False, box=None)
-    table.add_column("Check", style="cyan")
-    table.add_column("Status", style="bold")
-    
-    all_passed = True
-    for name, check_func in checks:
-        try:
-            passed = check_func()
-            status = "[green]✓ PASS[/green]" if passed else "[red]✗ FAIL[/red]"
-            table.add_row(name, status)
-            if not passed:
-                all_passed = False
-        except Exception as e:
-            table.add_row(name, f"[red]✗ ERROR: {e}[/red]")
-            all_passed = False
-    
-    console.print(table)
-    
-    if all_passed:
-        console.print("\n[bold green]✓ All health checks passed![/bold green]")
-    else:
-        console.print("\n[bold red]✗ Some health checks failed.[/bold red]")
-        raise typer.Exit(code=1)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        for check_name, check_func in checks:
+            task = progress.add_task(f"Checking {check_name}...", total=None)
+            try:
+                result = check_func()
+                progress.update(task, description=f"[green]✓ {check_name}[/green]")
+            except Exception as e:
+                progress.update(task, description=f"[red]✗ {check_name}: {e}[/red]")
+            time.sleep(0.5)
+
 
 if __name__ == "__main__":
     app()
