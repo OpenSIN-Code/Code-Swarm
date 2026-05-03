@@ -7,7 +7,8 @@
       "tools": [
         "langgraph",
         "opencode",
-        "docker"
+        "docker",
+        "simone-mcp"
       ],
       "output_format": "json",
       "benchmarks": [
@@ -86,6 +87,7 @@
       "fallback_model": "vercel/deepseek/deepseek-v4-flash",
       "tools": [
         "docker",
+        "simone-mcp",
         "pytest",
         "opencode"
       ],
@@ -169,6 +171,7 @@
       "fallback_model": "fireworks-ai/minimax-m2.7",
       "tools": [
         "docker",
+        "simone-mcp",
         "sqlalchemy",
         "opencode"
       ],
@@ -336,6 +339,7 @@
         "opencode-vision",
         "selenium",
         "docker",
+        "simone-mcp",
         "vision-gate"
       ],
       "output_format": "json",
@@ -391,6 +395,7 @@
       "tools": [
         "opencode",
         "docker",
+        "simone-mcp",
         "build-tools"
       ],
       "output_format": "json",
@@ -418,6 +423,7 @@
       "tools": [
         "opencode",
         "docker",
+        "simone-mcp",
         "build-tools"
       ],
       "output_format": "json",
@@ -550,6 +556,7 @@
       "tools": [
         "opencode",
         "docker",
+        "simone-mcp",
         "build-tools"
       ],
       "output_format": "json",

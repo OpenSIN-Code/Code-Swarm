@@ -340,6 +340,15 @@
       ],
       "enabled": false
     },
+    "simone-mcp": {
+      "type": "local",
+      "command": [
+        "node",
+        "/Users/jeremy/dev/Simone-MCP/dist/src/cli.js",
+        "serve-mcp"
+      ],
+      "enabled": true
+    },
     "sin-google-apps": {
       "type": "local",
       "command": [
