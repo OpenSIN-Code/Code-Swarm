@@ -1,6 +1,7 @@
 from __future__ import annotations
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, WebSocket, Query, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import WebSocketException
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timezone
@@ -15,6 +16,7 @@ from slowapi.errors import RateLimitExceeded
 
 from auth.security import AuthManager, RBACManager
 from monitoring.metrics import MetricsCollector, HealthChecker
+from streaming.websocket import manager as ws_manager, verify_ws_token
 
 
 logger = logging.getLogger("code-swarm.api")
@@ -227,6 +229,23 @@ def update_task(request: Request, task_id: str, status: str):
             return task
     raise HTTPException(status_code=404, detail="Task not found")
 
+
+@app.get("/ws/stats")
+@limiter.limit("10/minute")
+def get_websocket_stats(request: Request):
+    """Get WebSocket connection statistics."""
+    return {
+        "total_connections": ws_manager.get_connection_count(),
+        "active_users": len(ws_manager.active_connections),
+        "rate_limit_window": ws_manager.rate_limit_window,
+        "rate_limit_max": ws_manager.rate_limit_max,
+        "max_queue_size": ws_manager.max_message_queue
+    }
+
+
+# ============================================================================
+# DATA PERSISTENCE HELPERS
+# ============================================================================
 
 def _load_agents():
     agents_file = Path(".code-swarm/agents.json")
