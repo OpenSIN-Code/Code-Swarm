@@ -1,0 +1,12 @@
+{
+  "database": {
+    "status": "healthy",
+    "timestamp": "2026-05-03T03:11:07.253422",
+    "details": {}
+  },
+  "cache": {
+    "status": "healthy",
+    "timestamp": "2026-05-03T03:11:07.253640",
+    "details": {}
+  }
+}

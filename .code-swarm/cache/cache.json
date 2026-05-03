@@ -1,0 +1,9 @@
+{
+  "load-test-key": {
+    "key": "load-test-key",
+    "value": "test-value",
+    "created_at": "2026-05-03T03:09:27.010390",
+    "expires_at": "2026-05-03T04:09:27.010373",
+    "hits": 0
+  }
+}
