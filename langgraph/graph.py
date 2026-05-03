@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TypedDict, List, Dict, Any, Optional
+import asyncio
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.memory import MemorySaver
@@ -12,30 +13,84 @@ class LangGraphPipeline:
 
     Simone-MCP provides AST-level symbol operations for all agents:
     - code.find_symbol: Locate symbol definitions
-    - code.find_references: Find all usages
+    - code.find_references: Find all usages  
     - code.replace_symbol_body: Replace function bodies
     - code.insert_after_symbol: Inject code after symbols
     - code.project_overview: Analyze project structure
 
-    Dual transport: stdio (local) + streamable HTTP (remote)
+    Remote endpoint: http://92.5.60.87:8234 (OCI VM)
     """
 
-    def __init__(self, simone_url: str = "http://localhost:8234"):
+    def __init__(self, simone_url: str = "http://92.5.60.87:8234"):
         self.builder = StateGraph(OpenCodeState)
         self.memory = MemorySaver()
         self.simone = SwarmSimoneBridge(simone_url)
+        self._validate_simone_connection()
 
-    def add_simone_node(self, name: str):
-        """Füge einen Simone-MCP-fähigen Node hinzu."""
-        async def simone_node(state: OpenCodeState):
-            result = await self.simone.analyze_code(name)
-            return {
-                **state,
-                "execution_log": state["execution_log"] + [
-                    {"agent": name, "action": "Simone-MCP analyzed", "result": result}
-                ]
-            }
-        self.builder.add_node(name, simone_node)
+    def _validate_simone_connection(self):
+        """Verify Simone-MCP server is accessible."""
+        try:
+            import urllib.request
+            with urllib.request.urlopen(self.simone.simone_url + "/health", timeout=5) as resp:
+                if resp.status == 200:
+                    print(f"Simone-MCP connected: {self.simone.simone_url}")
+                else:
+                    print(f"Simone-MCP health check failed: {resp.status}")
+        except Exception as e:
+            print(f"Simone-MCP connection warning: {e}")
+
+    def add_simone_analysis_node(self, name: str, symbol: str, root: str = "."):
+        """Add a node that analyzes code using Simone-MCP."""
+        async def simone_analysis_node(state: OpenCodeState):
+            try:
+                result = await self.simone.analyze_code(symbol, root)
+                return {
+                    **state,
+                    "execution_log": state["execution_log"] + [
+                        {
+                            "agent": name,
+                            "action": "Simone-MCP code analysis",
+                            "symbol": symbol,
+                            "result": result,
+                            "status": "success"
+                        }
+                    ]
+                }
+            except Exception as e:
+                return {
+                    **state,
+                    "errors": state["errors"] + [
+                        {"agent": name, "error": str(e), "action": "simone_analysis"}
+                    ]
+                }
+        self.builder.add_node(name, simone_analysis_node)
+
+    def add_simone_modify_node(self, name: str, symbol: str, file: str, body: str):
+        """Add a node that modifies code using Simone-MCP."""
+        async def simone_modify_node(state: OpenCodeState):
+            try:
+                result = await self.simone.modify_code(symbol, file, body)
+                return {
+                    **state,
+                    "execution_log": state["execution_log"] + [
+                        {
+                            "agent": name,
+                            "action": "Simone-MCP code modification",
+                            "symbol": symbol,
+                            "file": file,
+                            "result": result,
+                            "status": "success"
+                        }
+                    ]
+                }
+            except Exception as e:
+                return {
+                    **state,
+                    "errors": state["errors"] + [
+                        {"agent": name, "error": str(e), "action": "simone_modify"}
+                    ]
+                }
+        self.builder.add_node(name, simone_modify_node)
 
     def add_research_swarm(self, agents: List[Dict[str, Any]]):
         for agent in agents:
@@ -63,18 +118,40 @@ class LangGraphPipeline:
         return self.builder.compile(checkpointer=self.memory)
 
 
+async def create_default_pipeline() -> LangGraphPipeline:
+    """Create the default SIN pipeline with all nodes."""
+    pipeline = LangGraphPipeline()
+    
+    # Add all standard nodes
+    pipeline.builder.add_node("hermes", hermes_node)
+    pipeline.builder.add_node("prometheus", prometheus_node)
+    pipeline.builder.add_node("zeus", zeus_node)
+    pipeline.builder.add_node("atlas", atlas_node)
+    pipeline.builder.add_node("iris", iris_node)
+    
+    # Add edges
+    pipeline.builder.set_entry_point("hermes")
+    pipeline.builder.add_edge("hermes", "prometheus")
+    pipeline.builder.add_edge("prometheus", "zeus")
+    pipeline.builder.add_edge("zeus", "atlas")
+    pipeline.builder.add_edge("atlas", "iris")
+    pipeline.builder.add_edge("iris", END)
+    
+    return pipeline
+
+
 def hermes_node(state: OpenCodeState):
-    """Hermes Node: Task-Verteilung mit Simone-MCP."""
+    """Hermes Node: Task distribution with Simone-MCP integration."""
     return {
         **state,
         "execution_log": state["execution_log"] + [
-            {"agent": "hermes", "action": "Task verteilt", "task": state["task"]}
+            {"agent": "hermes", "action": "Task distributed", "task": state["task"]}
         ]
     }
 
 
 def prometheus_node(state: OpenCodeState):
-    """Prometheus Node: Architektur-Planung mit Simone-MCP."""
+    """Prometheus Node: Architecture planning with Simone-MCP."""
     return {
         **state,
         "plans": state["plans"] + [
@@ -84,7 +161,8 @@ def prometheus_node(state: OpenCodeState):
                     "architecture": "LangGraph + Simone-MCP",
                     "context_window": "1M",
                     "feedback_loops": True,
-                    "simone_integrated": True
+                    "simone_integrated": True,
+                    "endpoint": "http://92.5.60.87:8234"
                 }
             }
         ]
@@ -92,7 +170,7 @@ def prometheus_node(state: OpenCodeState):
 
 
 def zeus_node(state: OpenCodeState):
-    """Zeus Node: Kritische Review mit Simone-MCP."""
+    """Zeus Node: Critical review with Simone-MCP validation."""
     return {
         **state,
         "validated_plan": {
@@ -104,13 +182,13 @@ def zeus_node(state: OpenCodeState):
 
 
 def atlas_node(state: OpenCodeState):
-    """Atlas Node: Backend-Entwicklung mit Simone-MCP AST."""
+    """Atlas Node: Backend development with Simone-MCP AST operations."""
     return {
         **state,
         "execution_log": state["execution_log"] + [
             {
                 "agent": "atlas",
-                "action": "Backend-Code generiert (Simone-MCP powered)",
+                "action": "Backend code generated (Simone-MCP powered)",
                 "tools": ["code.find_symbol", "code.replace_symbol_body"]
             }
         ]
@@ -118,13 +196,13 @@ def atlas_node(state: OpenCodeState):
 
 
 def iris_node(state: OpenCodeState):
-    """Iris Node: Frontend-Entwicklung mit Simone-MCP."""
+    """Iris Node: Frontend development with Simone-MCP."""
     return {
         **state,
         "execution_log": state["execution_log"] + [
             {
                 "agent": "iris",
-                "action": "Frontend-Code generiert (Simone-MCP powered)"
+                "action": "Frontend code generated (Simone-MCP powered)"
             }
         ]
     }
