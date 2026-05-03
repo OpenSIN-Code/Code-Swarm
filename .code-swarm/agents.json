@@ -1,0 +1,40 @@
+[
+  {
+    "id": "agent_1",
+    "name": "sin-zeus",
+    "model": "fireworks-ai/minimax-m2.7",
+    "role": "fleet-commander",
+    "capabilities": [
+      "planning",
+      "orchestration",
+      "dispatch"
+    ],
+    "status": "idle",
+    "created_at": "2026-05-03T00:00:00+00:00"
+  },
+  {
+    "id": "agent_2",
+    "name": "sin-solo",
+    "model": "vercel/deepseek-v4-pro",
+    "role": "executor",
+    "capabilities": [
+      "coding",
+      "testing",
+      "review"
+    ],
+    "status": "idle",
+    "created_at": "2026-05-03T00:00:00+00:00"
+  },
+  {
+    "id": "agent_3",
+    "name": "coder-sin-swarm",
+    "model": "fireworks-ai/minimax-m2.7",
+    "role": "coder",
+    "capabilities": [
+      "implementation",
+      "debugging"
+    ],
+    "status": "idle",
+    "created_at": "2026-05-03T00:00:00+00:00"
+  }
+]
