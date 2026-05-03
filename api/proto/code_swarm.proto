@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package code_swarm;
+
+option go_package = "./pb";
+option py_generic_services = true;
+
+service AgentService {
+  rpc CreateAgent (AgentRequest) returns (AgentResponse);
+  rpc ListAgents (ListAgentsRequest) returns (ListAgentsResponse);
+  rpc GetAgent (GetAgentRequest) returns (AgentResponse);
+}
+
+service TaskService {
+  rpc CreateTask (TaskRequest) returns (TaskResponse);
+  rpc ListTasks (ListTasksRequest) returns (ListTasksResponse);
+  rpc UpdateTask (UpdateTaskRequest) returns (TaskResponse);
+}
+
+message AgentRequest {
+  string name = 1;
+  string model = 2;
+  string role = 3;
+  repeated string capabilities = 4;
+}
+
+message AgentResponse {
+  string id = 1;
+  string name = 2;
+  string model = 3;
+  string role = 4;
+  repeated string capabilities = 5;
+  string status = 6;
+}
+
+message ListAgentsRequest {
+  string role = 1;
+}
+
+message ListAgentsResponse {
+  repeated AgentResponse agents = 1;
+}
+
+message GetAgentRequest {
+  string id = 1;
+}
+
+message TaskRequest {
+  string title = 1;
+  string description = 2;
+  int32 priority = 3;
+  string assigned_to = 4;
+}
+
+message TaskResponse {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  int32 priority = 4;
+  string status = 5;
+  string created_at = 6;
+}
+
+message ListTasksRequest {
+  string status = 1;
+}
+
+message ListTasksResponse {
+  repeated TaskResponse tasks = 1;
+}
+
+message UpdateTaskRequest {
+  string id = 1;
+  string status = 2;
+}
