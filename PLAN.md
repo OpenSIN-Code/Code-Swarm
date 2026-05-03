@@ -1,368 +1,328 @@
-# 🔥 Code-Swarm SOTA Implementation Plan
-**Erstellt:** 2026-05-02  
-**Status:** SOTA Best Practice für OpenCode Swarm System  
-**Repo:** https://github.com/OpenSIN-Code/Code-Swarm
+# Code-Swarm PR #25 Ultimate SOTA Best-Practices Plan
+
+**Repo:** `OpenSIN-Code/Code-Swarm`  
+**PR:** [#25 Launch CEO Transformation Playbook and enhance production stability](https://github.com/OpenSIN-Code/Code-Swarm/pull/25)  
+**Branch:** `product-market-review` → `main`  
+**Updated:** 2026-05-03  
+**Mode:** Plan only. No issue closes until its acceptance gate is green.
 
 ---
 
-## 📊 KURZUEBERSICHT
+## 0. Current PR Facts
 
-| Aspekt | Status | Empfehlung |
-|--------|--------|------------|
-| **Agenten-Architektur** | ❌ Zu viele Hauptagenten | ✅ Max 2 auswählbare Agenten |
-| **Swarm-System** | ⚠️ Fragmentiert | ✅ Code-Swarm LangGraph Pipeline |
-| **Modell-Strategie** | ⚠️ Wild gemischt | ✅ Fireworks AI + Vercel DeepSeek V4 |
-| **Subagenten** | ⚠️ Hauptagenten statt Subagenten | ✅ Alle spezialisierten Agenten als Subagenten |
-| **Benchmarking** | ❌ Kein Benchmark-Tracking | ✅ swe_bench, humaneval_x, agentic_workflows |
+| Item | State |
+| --- | --- |
+| PR state | Open |
+| Mergeability | Mergeable / clean |
+| Vercel preview | Ready |
+| Changed files | 21 |
+| Additions / deletions | +2567 / -804 |
+| Main themes | API gateway, WebSockets, CLI UX, persistence, MkDocs docs, version correction |
+
+### Open Issues Covered or Touched
+
+| Issue | Theme | Current plan status |
+| --- | --- | --- |
+| #9 | API Gateway, gRPC, OpenAPI, rate limiting | Validate implementation before close |
+| #10 | Kubernetes, HPA, Istio, multi-tenancy | Separate infra gate required |
+| #11 | Real-time WebSockets and streaming | Validate auth, limits, backpressure |
+| #12 | CLI UX with Rich, progress, autocomplete | Validate API-backed CLI workflows |
+| #13 | MkDocs, Swagger, tutorials, architecture | Validate strict docs build |
+| #14 | RLHF/self-improvement loops | P2 implementation plan required |
+| #19 | Hybrid memory with Qdrant + Neo4j | P2 implementation plan required |
 
 ---
 
-## 🎯 VISION: SOTA SWARM ARCHITEKTUR
+## 1. Non-Negotiable Stop Gates
 
+### 1.1 Secret Hygiene Gate
+
+Merge is blocked until all checks are green:
+
+- [ ] No real secrets in repository files.
+- [ ] `.env.example` contains placeholders only.
+- [ ] `README.md`, `SECURITY.md`, docs, comments, and scripts contain no API keys, JWTs, passwords, service keys, or full DB URLs.
+- [ ] All required runtime values exist only in Infisical and deployment environment variables.
+- [ ] Any token/key previously exposed in chat, docs, commits, or examples is rotated.
+- [ ] `gitleaks detect` is clean.
+- [ ] `trufflehog git file://.` is clean.
+
+### 1.2 Reality-Claim Gate
+
+- [ ] README status table matches code and tests.
+- [ ] No “GA”, “production-ready”, or “100% complete” claim without verified tests and deployment evidence.
+- [ ] Version remains beta unless all P0/P1 acceptance gates are green.
+- [ ] Docs label P2 work as planned, not implemented.
+
+### 1.3 Merge Gate
+
+- [ ] Unit tests pass.
+- [ ] Auth/security tests pass.
+- [ ] WebSocket tests pass.
+- [ ] CLI smoke tests pass against a running API.
+- [ ] `mkdocs build --strict` passes.
+- [ ] Vercel preview smoke test passes.
+- [ ] PR diff has no hardcoded IPs, hostnames, or secrets.
+- [ ] Manual QA notes are posted on PR #25.
+
+---
+
+## 2. Required Environment Variables
+
+Runtime configuration must be read from environment variables. Values must not be committed.
+
+| Variable | Required for | Source of truth |
+| --- | --- | --- |
+| `DATABASE_URL` | API persistence | Infisical + deploy env |
+| `REDIS_URL` | rate limit/cache/queues | Infisical + deploy env |
+| `SUPABASE_URL` | Supabase client | Infisical + deploy env |
+| `SUPABASE_ANON_KEY` | public Supabase client | Infisical + deploy env |
+| `SUPABASE_SERVICE_KEY` | server-only Supabase access | Infisical + deploy env |
+| `SIMONE_MCP_URL` | Simone-MCP bridge | Infisical + deploy env |
+| `PRIMARY_MODEL` | default agent model | Infisical + deploy env |
+| `VISION_MODEL` | vision/look_at model | Infisical + deploy env |
+| `SECRET_KEY` | JWT/session signing | Infisical + deploy env |
+| `ALLOWED_ORIGINS` | CORS | Infisical + deploy env |
+| `ENVIRONMENT` | runtime safety mode | deploy env |
+| `SENTRY_DSN` | error monitoring | Infisical + deploy env |
+
+Expected model defaults:
+
+- `PRIMARY_MODEL=fireworks-ai/minimax-m2.7`
+- `VISION_MODEL=nvidia/nvidia/nemotron-3-nano-omni`
+
+---
+
+## 3. Issue Acceptance Matrix
+
+### #9 API Gateway
+
+Scope:
+
+- FastAPI REST endpoints.
+- gRPC integration.
+- OpenAPI/Swagger visibility.
+- Rate limiting on every sensitive endpoint.
+
+Acceptance:
+
+- [ ] `api/main.py` imports cleanly.
+- [ ] App starts locally with required env vars.
+- [ ] `/health` returns healthy.
+- [ ] `/docs` exposes accurate OpenAPI.
+- [ ] Rate limit test proves throttling.
+- [ ] No hardcoded Simone URL/IP.
+
+### #10 Kubernetes and Auto-Scaling
+
+Scope:
+
+- Helm chart.
+- HPA.
+- Istio or documented service mesh path.
+- Multi-tenant configuration.
+
+Acceptance:
+
+- [ ] `helm lint` passes.
+- [ ] `helm template` renders manifests.
+- [ ] HPA references real metrics.
+- [ ] Secrets are referenced via Kubernetes Secret or external secret provider, never inline.
+- [ ] Deployment guide includes k3s/OCI path and rollback.
+
+### #11 WebSockets
+
+Scope:
+
+- JWT-authenticated real-time agent/task streams.
+- Per-user limits.
+- Backpressure.
+- Monitoring endpoint.
+
+Acceptance:
+
+- [ ] Connect without token is rejected.
+- [ ] Connect with invalid token is rejected.
+- [ ] Connect with valid token succeeds.
+- [ ] Per-user connection limit works.
+- [ ] Message rate limit works.
+- [ ] Backpressure warning is observable.
+- [ ] Disconnect cleanup removes connection state.
+
+### #12 CLI UX
+
+Scope:
+
+- Rich tables.
+- Progress spinners.
+- Autocomplete support.
+- API-backed commands.
+- Human-readable errors.
+
+Acceptance:
+
+- [ ] `code-swarm --help` renders.
+- [ ] `code-swarm login` stores token securely.
+- [ ] `code-swarm agents` works against API.
+- [ ] `code-swarm tasks` works against API.
+- [ ] `code-swarm create-agent` validates inputs.
+- [ ] `code-swarm create-task` validates priority.
+- [ ] API unavailable path returns clear error.
+
+### #13 Documentation
+
+Scope:
+
+- MkDocs.
+- Swagger/OpenAPI reference.
+- Architecture guide.
+- CLI guide.
+- Vercel deployment guide.
+
+Acceptance:
+
+- [ ] `mkdocs build --strict` passes.
+- [ ] Docs do not expose secrets.
+- [ ] Architecture diagrams match code.
+- [ ] API docs match OpenAPI output.
+- [ ] Deployment guide uses environment variables only.
+- [ ] README links point to real files.
+
+### #14 RLHF / Self-Improvement
+
+Scope:
+
+- Feedback capture.
+- Error analysis.
+- Bayesian optimization loop.
+
+Acceptance for planning phase:
+
+- [ ] Design document exists.
+- [ ] Data model for feedback is specified.
+- [ ] Privacy/security constraints are specified.
+- [ ] Implementation tickets are created.
+
+Acceptance for implementation phase:
+
+- [ ] Feedback events persist.
+- [ ] Scoring pipeline has tests.
+- [ ] Opt-out/deletion path exists.
+
+### #19 Hybrid Memory
+
+Scope:
+
+- Qdrant vector memory.
+- Neo4j graph memory.
+- Adapter interface.
+- Retrieval policy.
+
+Acceptance for planning phase:
+
+- [ ] Architecture document exists.
+- [ ] Adapter contracts are specified.
+- [ ] Data retention and deletion are specified.
+- [ ] Implementation tickets are created.
+
+Acceptance for implementation phase:
+
+- [ ] Qdrant adapter tests pass.
+- [ ] Neo4j adapter tests pass.
+- [ ] Hybrid retrieval tests pass.
+- [ ] Failure fallback is documented and tested.
+
+---
+
+## 4. Verification Commands
+
+Run from repository root after checking out PR #25 branch.
+
+```bash
+python -m pip install -r requirements.txt
+python -m pytest tests/unit -q
+python -m pytest tests/unit/test_security.py -q
+python -m pytest tests/unit/test_core.py -q
+python -m compileall api auth cli db simone_mcp streaming swarm_pipeline
+mkdocs build --strict -f docs/mkdocs.yml
+gitleaks detect --source . --no-git
+trufflehog filesystem . --no-update
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  SIN-Zeus (Fleet Commander) [FIREWORKS AI MINIMAX M2.7]    │
-│  └─> LangGraph Pipeline                                     │
-│      ├── Research Swarm (Athena, Argus, Daedalus)           │
-│      ├── Planning Swarm (Prometheus)                        │
-│      ├── Execution Layer (Atlas Backend, Iris Frontend)     │
-│      ├── Validation Superlayer (Zeus)                       │
-│      └── Memory + Feedback Loops                            │
-└─────────────────────────────────────────────────────────────┘
-          │
-          ▼ (Delegiert an oh-my-opencode Subagenten)
-┌─────────────────────────────────────────────────────────────┐
-│  oh-my-opencode.json (SUBAGENTEN - NICHT auswählbar!)        │
-│  ├── aegis, apollo (Build)                                  │
-│  ├── argus, athena (Research)                               │
-│  ├── audio_agent (Audio/STT)                                │
-│  ├── multimedia_looker (Vision)                             │
-│  └── web_recherche_agent (Web Research)                     │
-└─────────────────────────────────────────────────────────────┘
+
+Runtime smoke:
+
+```bash
+ENVIRONMENT=development \
+SECRET_KEY=dev-only-local-secret \
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173 \
+SIMONE_MCP_URL=http://localhost:8234 \
+PRIMARY_MODEL=fireworks-ai/minimax-m2.7 \
+VISION_MODEL=nvidia/nvidia/nemotron-3-nano-omni \
+uvicorn api.main:app --host 127.0.0.1 --port 8000
 ```
 
----
+Then verify:
 
-## 🔬 ANALYSE: AKTUELLER STAND
-
-### ✅ Was Code-Swarm bereits KORREKT hat:
-
-| Feature | Status | Details |
-|---------|--------|---------|
-| **LangGraph Orchestration** | ✅ SOTA | StateGraph mit `task`, `research`, `plans`, `validated_plan`, `execution_log`, `memory`, `errors`, `feedback`, `metrics` |
-| **Spezialisierte Agenten** | ✅ SOTA | Atlas (Backend), Hermes (Dispatch), Iris (Frontend), Janus (API), Hades (DB), Asclepius (QA), Prometheus (Planung), Zeus (Validation) |
-| **Model-Hierarchie** | ✅ SOTA | Modelle sind definiert, aber noch nicht optimal |
-| **Sub-Agenten System** | ✅ SOTA | `sub/` Agent mit aegis, apollo, argus, athena, audio_agent |
-| **Kein tmux/worktrees** | ✅ SOTA | "KEIN tmux! KEINE Worktrees! KEIN Background-Dispatch!" — opencode-native Delegation |
-| **Feedback Loops** | ✅ SOTA | `feedback/self_improvement.py`, `feedback/error_tracking.py` |
-| **Memory Layer** | ✅ SOTA | `memory/vector_db.py`, `memory/state.py` |
-| **Benchmarks** | ✅ SOTA | swe_bench, humaneval_x, agentic_workflows, terminal_bench |
-| **JSON Output** | ✅ SOTA | Alle Agenten Output als JSON |
-
-### ❌ Was in deinem aktuellen opencode.json FALSCH ist:
-
-| Problem | Aktuell | SOTA Best Practice |
-|---------|---------|-------------------|
-| **35 auswählbare Agenten** | ❌ Zuviel! | ✅ Max **2** auswählbare Hauptagenten |
-| **Sisyphus/Atlas/Hephaestus** | ❌ Generische Agenten | ✅ Ersetzen durch spezialisierte Code-Swarm Agenten |
-| **Alle Agenten als "Hauptagenten"** | ❌ Kein Swarm | ✅ Nur SIN-Zeus + 1 User-Agent, Rest als Subagenten |
-| **Omoc Swarm Commands** | ❌ Komplex | ✅ Code-Swarm LangGraph Swarm = SOTA |
-| **Fireworks AI Account** | ❌ Gesperrt | ✅ Neuer Account bereits aktiv! |
-| **Modelle nicht optimiert** | ❌ Wild gemischt | ✅ Fireworks AI + Vercel DeepSeek V4 Hierarchy |
-
----
-
-## 🧠 GESAMMELTE KENNTNISSE AUS ANALYSE
-
-### 1. Code-Swarm Repo Struktur
-
-```
-Code-Swarm/
-├── README.md                # Hauptdokumentation
-├── configs/
-│   ├── opencode.json        # Haupt-Agenten-Definitionen
-│   └── oh-my-opencode.json  # Sub-Agenten-Definitionen
-├── langgraph/               # LangGraph Pipeline
-│   ├── state.py             # StateGraph-Definition
-│   └── graph.py             # Komplette Graph-Logik
-├── agents/                  # Agenten-Prompts
-│   ├── hermes/              # Dispatcher (Mistral Small)
-│   ├── prometheus/          # System Planner (Mistral Large)
-│   ├── zeus/                # Validation Superlayer (Mistral Medium)
-│   ├── atlas/               # Backend Engineer (Mistral Large)
-│   ├── iris/                # Frontend Engineer (Mistral Small)
-│   ├── janus/               # API Architect (Mistral Small)
-│   ├── hades/               # Database Architect (Mistral Small)
-│   ├── asclepius/           # QA/Testing (Mistral Small)
-│   └── sub/                 # Sub-Agenten
-│       ├── aegis/
-│       ├── apollo/
-│       ├── argus/
-│       ├── athena/
-│       └── audio_agent/
-├── cli/                     # CLI
-│   └── main.py
-├── memory/                  # Memory Layer
-│   ├── vector_db.py
-│   └── state.py
-├── feedback/                # Feedback Loops
-│   ├── self_improvement.py
-│   └── error_tracking.py
-└── code_swarm/              # Core System
-    ├── __init__.py
-    ├── events.py
-    ├── memory.py
-    └── registry.py
-```
-
-### 2. Verfügbare Modelle (via `opencode models`)
-
-#### 🔥 FIREWORKS AI
-| Modell | ID | Best Practice |
-|--------|----|---------------|
-| **Kimi K2.6** | `fireworks-ai/accounts/fireworks/models/kimi-k2p6` | Ultra-Coder-Modell, starkes Reasoning |
-| **Minimax M2.7** | `fireworks-ai/accounts/fireworks/models/minimax-m2p7` | **DEIN ULTIMATIVES CODER-MODELL!** |
-| **Qwen 3.6 Plus** | `fireworks-ai/accounts/fireworks/models/qwen3p6-plus` | Starkes Allround-Modell |
-
-#### 🌐 VERCEL
-| Modell | ID | Best Practice |
-|--------|----|---------------|
-| **DeepSeek V4 Pro** | `vercel/deepseek/deepseek-v4-pro` | Premium Coding + komplexe推理aufgaben |
-| **DeepSeek V4 Flash** | `vercel/deepseek/deepseek-v4-flash` | Schnelles Coding, günstig |
-
-#### ⚡ NVIDIA (Fallback)
-| Modell | ID | Best Practice |
-|--------|----|---------------|
-| **Nemotron 3 Nano Omni** | `nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` | Reasoning-Spezialist |
-| **GLM 5.1** | `nvidia/z-ai/glm-5.1` | **FALLBACK** für NON-VISION Tasks |
-
-### 3. Modell-Strategie (User Bestätigt)
-
-**NUR** diese Modelle für NON-VISION Agenten:
-
-| Modell | Provider | Primär/Fallback | Einsatz |
-|--------|----------|-----------------|---------|
-| `fireworks-ai/minimax-m2.7` | Fireworks AI | **PRIMARY** | Alle wichtigen Coding/Reasoning Tasks |
-| `vercel/deepseek/deepseek-v4-flash` | Vercel | **PRIMARY (schnell)** | Research, einfache Tasks |
-| `vercel/deepseek/deepseek-v4-pro` | Vercel | **PRIMARY (komplex)** | Komplexe Planung, Architektur |
-| `nvidia/z-ai/glm-5.1` | NVIDIA | **FALLBACK** | Wenn andere nicht verfügbar |
-
-### 4. Agenten-Zuordnung (SOTA Best Practice)
-
-#### Hauptagenten (NUR 2 auswählbar!)
-| Agent | Primär-Modell | Fallback | Einsatzbereich |
-|-------|---------------|----------|----------------|
-| **SIN-Zeus** (Fleet Commander) | `fireworks-ai/minimax-m2.7` | `vercel/deepseek/deepseek-v4-pro` | Oberbefehl, Dispatching, GitHub Issues |
-| **coder-sin-swarm** (User Coder) | `fireworks-ai/minimax-m2.7` | `vercel/deepseek/deepseek-v4-flash` | User-facing Coding Tasks |
-
-#### Subagenten (oh-my-opencode.json - NICHT auswählbar!)
-| Agent | Primär-Modell | Fallback | Einsatzbereich |
-|-------|---------------|----------|----------------|
-| **hermes** (Dispatcher) | `vercel/deepseek/deepseek-v4-flash` | `fireworks-ai/minimax-m2.7` | Task-Verteilung, Swarm-Orchesterierung |
-| **prometheus** (Planner) | `vercel/deepseek/deepseek-v4-pro` | `fireworks-ai/minimax-m2.7` | Architektur-Design, Feedback-Loops |
-| **zeus** (Validator) | `vercel/deepseek/deepseek-v4-pro` | `fireworks-ai/minimax-m2.7` | Review, Security, Future-proofing |
-| **atlas** (Backend) | `fireworks-ai/minimax-m2.7` | `vercel/deepseek/deepseek-v4-flash` | Backend, APIs, DB-Schema |
-| **iris** (Frontend) | `vercel/deepseek/deepseek-v4-flash` | `fireworks-ai/minimax-m2.7` | UI/UX, pixel-perfect Designs |
-| **janus** (API) | `vercel/deepseek/deepseek-v4-flash` | `fireworks-ai/minimax-m2.7` | REST/GraphQL APIs |
-| **hades** (DB) | `vercel/deepseek/deepseek-v4-flash` | `fireworks-ai/minimax-m2.7` | DB-Design, SQLAlchemy |
-| **asclepius** (QA) | `vercel/deepseek/deepseek-v4-flash` | `fireworks-ai/minimax-m2.7` | Tests, Edge Cases |
-| **athena** (Research) | `vercel/deepseek/deepseek-v4-flash` | `fireworks-ai/minimax-m2.7` | Marktanalyse, Trends |
-| **argus** (Web Research) | `vercel/deepseek/deepseek-v4-flash` | `fireworks-ai/minimax-m2.7` | Foren, Social Media |
-| **daedalus** (Tech Research) | `vercel/deepseek/deepseek-v4-flash` | `fireworks-ai/minimax-m2.7` | Code-Analyse, Architektur |
-| **hermes_scout** (Retriever) | `vercel/deepseek/deepseek-v4-flash` | `nvidia/z-ai/glm-5.1` | Schnelle Abfragen, API-Integration |
-| **multimedia_looker** (Vision) | `nvidia/meta/llama-3.2-11b-vision-instruct` | `mistral/pixtral-12b` | Screenshots, GUI-Elemente |
-| **audio_agent** (Audio) | `groq/whisper-large-v3` | `nvidia/openai/whisper-large-v3` | STT/TTS |
-| **aegis** (Build) | `vercel/deepseek/deepseek-v4-flash` | `fireworks-ai/minimax-m2.7` | Build-Tasks |
-| **apollo** (Build) | `vercel/deepseek/deepseek-v4-flash` | `fireworks-ai/minimax-m2.7` | Build-Tasks |
-| **omoc** (Orchestrator) | `vercel/deepseek/deepseek-v4-flash` | `fireworks-ai/minimax-m2.7` | Swarm-Orchestrierung |
-| **sin-executor-solo** | `fireworks-ai/minimax-m2.7` | `vercel/deepseek/deepseek-v4-flash` | Single-Agent Coding |
-
----
-
-## 🚀 IMPLEMENTATION ROADMAP
-
-### Phase 1: Plan erstellen ✅
-- [x] Analyse aller Repos (OpenSIN-Code, Code-Swarm)
-- [x] Sammlung aller verfügbaren Modelle
-- [x] Bestimmung der optimalen Modell-Strategie
-- [x] Dokumentation der SOTA Architektur
-
-### Phase 2: Neue opencode.json erstellen
-- [ ] **NUR 2 auswählbare Agenten:**
-  - SIN-Zeus (Fleet Commander)
-  - coder-sin-swarm (User Coder)
-- [ ] Alle spezialisierten Agenten (Hermes, Prometheus, Atlas, etc.) als **Subagenten** verschieben
-- [ ] Modelle auf Fireworks AI + Vercel DeepSeek V4 Hierarchy umstellen
-
-### Phase 3: oh-my-opencode.json aktualisieren
-- [ ] Alle Subagenten korrekt konfigurieren
-- [ ] Modelle zuweisen (Fireworks AI + Vercel)
-- [ ] Tools und Benchmarks definieren
-
-### Phase 4: Code-Swarm LangGraph Pipeline integrieren
-- [ ] State Management überprüfen
-- [ ] Feedback Loops aktivieren
-- [ ] Memory Layer konfigurieren
-
-### Phase 5: Test und Validierung
-- [ ] Benchmark-Tests durchführen (swe_bench, humaneval_x)
-- [ ] Swarm-Koordination testen
-- [ ] Performance-Metriken sammeln
-
----
-
-## 📋 KONFIGURATIONS-BLOCKS
-
-### Provider-Konfiguration (für opencode.json)
-
-```json
-"provider": {
-  "fireworks-ai": {
-    "npm": "@ai-sdk/openai-compatible",
-    "name": "Fireworks AI",
-    "options": {
-      "baseURL": "https://api.fireworks.ai/inference/v1"
-    },
-    "models": {
-      "minimax-m2.7": {
-        "id": "fireworks-ai/accounts/fireworks/models/minimax-m2p7",
-        "name": "Minimax M2.7 (Fireworks AI)",
-        "limit": {
-          "context": 262144,
-          "output": 32768
-        }
-      }
-    }
-  },
-  "vercel": {
-    "models": {
-      "deepseek-v4-flash": {
-        "id": "vercel/deepseek/deepseek-v4-flash"
-      },
-      "deepseek-v4-pro": {
-        "id": "vercel/deepseek/deepseek-v4-pro"
-      }
-    }
-  },
-  "nvidia-nim": {
-    "npm": "@ai-sdk/openai",
-    "name": "NVIDIA NIM",
-    "options": {
-      "baseURL": "https://integrate.api.nvidia.com/v1",
-      "apiKey": "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"
-    },
-    "models": {
-      "glm-5.1": {
-        "id": "nvidia/z-ai/glm-5.1",
-        "name": "GLM 5.1 (NVIDIA NIM)",
-        "limit": {
-          "context": 262144,
-          "output": 32768
-        }
-      },
-      "llama-3.2-11b-vision-instruct": {
-        "id": "nvidia/meta/llama-3.2-11b-vision-instruct",
-        "limit": {
-          "context": 131072,
-          "output": 32768
-        },
-        "modalities": {
-          "input": ["text", "image"],
-          "output": ["text"]
-        }
-      }
-    }
-  },
-  "groq": {
-    "models": {
-      "whisper-large-v3": {
-        "id": "groq/whisper-large-v3"
-      }
-    }
-  }
-}
+```bash
+curl -fsS http://127.0.0.1:8000/health
+curl -fsS http://127.0.0.1:8000/docs
+python -m cli.main health
 ```
 
 ---
 
-## 🔧 BENCHMARK-TRACKING
+## 5. Deployment Plan
 
-| Benchmark | Beschreibung | Target Agents |
-|-----------|--------------|---------------|
-| **swe_bench_mini** | Software Engineering Benchmark Mini | Atlas, Janus, Hades |
-| **humaneval_x** | HumanEval Extended | Atlas, Asclepius |
-| **swe_bench_pro** | Software Engineering Benchmark Pro | Alle Coding-Agenten |
-| **agentic_workflows** | Agentic Workflows Test | Hermes, Prometheus |
-| **terminal_bench_2.0** | Terminal Benchmark | Hermes, Prometheus |
-| **marktanalyse** | Marktanalyse Benchmark | Athena |
-| **web_recherche** | Web Recherche Benchmark | Argus |
-| **code_review** | Code Review Benchmark | Daedalus |
-| **vision_gui_grounding** | Vision GUI Grounding | Multimedia-Looker |
-| **mmmu_pro** | MMMU Pro | Multimedia-Looker |
+### 5.1 Vercel
 
----
+- [ ] Link Vercel project to `OpenSIN-Code/Code-Swarm`.
+- [ ] Configure env vars via Vercel dashboard/API, sourced from Infisical.
+- [ ] Deploy preview from PR #25.
+- [ ] Run browser/API smoke on preview.
+- [ ] Promote to production only after gates pass.
 
-## 📊 GEWÜNSCHTE ARCHITEKTUR (FINAL)
+### 5.2 Monitoring
 
-```
-User-Interface (OpenCode)
-    │
-    ▼
-┌─────────────────────────────────────────┐
-│  SIN-Zeus (Fleet Commander)             │
-│  Primär: fireworks-ai/minimax-m2.7      │
-│  Fallback: vercel/deepseek-v4-pro       │
-│  Entscheidet: Welche Agenten arbeiten   │
-└─────────────────────────────────────────┘
-    │
-    ├──► LangGraph Pipeline
-    │       │
-    │       ├── Research Swarm
-    │       │   ├── Athena (vercel/deepseek-v4-flash)
-    │       │   ├── Argus (vercel/deepseek-v4-flash)
-    │       │   └── Daedalus (vercel/deepseek-v4-flash)
-    │       │
-    │       ├── Planning Swarm
-    │       │   └── Prometheus (vercel/deepseek-v4-pro)
-    │       │
-    │       ├── Execution Layer
-    │       │   ├── Atlas Backend (fireworks-ai/minimax-m2.7)
-    │       │   ├── Iris Frontend (vercel/deepseek-v4-flash)
-    │       │   ├── Janus API (vercel/deepseek-v4-flash)
-    │       │   └── Hades DB (vercel/deepseek-v4-flash)
-    │       │
-    │       └── Validation Superlayer
-    │           └── Zeus (vercel/deepseek-v4-pro)
-    │
-    └──► Subagenten (oh-my-opencode.json)
-            ├── aegis, apollo (Build)
-            ├── hermes_scout (Retriever)
-            ├── multimedia_looker (Vision)
-            ├── audio_agent (Audio)
-            └── omoc (Orchestrator)
-```
+- [ ] Prometheus metrics endpoint documented and tested.
+- [ ] Grafana dashboard JSON added or linked.
+- [ ] Sentry DSN configured in deploy env.
+- [ ] Alerts configured for error rate, latency, auth failure spikes, and websocket connection pressure.
+- [ ] Runbook documents owner, severity, and rollback.
+
+### 5.3 Rollback
+
+- [ ] Vercel previous deployment rollback documented.
+- [ ] Database migration rollback documented.
+- [ ] Feature flags or env toggles documented for WebSockets and persistence.
 
 ---
 
-## 🎯 ERFOLGSKRITERIEN
+## 6. PR #25 Review Checklist
 
-1. **Max 2 auswählbare Agenten** in opencode.json
-2. **Alle spezialisierten Agenten** als Subagenten
-3. **Nur Fireworks AI + Vercel Modelle** für NON-VISION
-4. **Benchmark-Tracking** für alle Agenten
-5. **LangGraph Pipeline** für Swarm-Koordination
-6. **Feedback Loops** für Self-Improvement
-7. **Memory Layer** für Vektor-DB
-
----
-
-## 🔗 REFERENZEN
-
-- [Code-Swarm Repo](https://github.com/OpenSIN-Code/Code-Swarm)
-- [OpenSIN-Code Repo](https://github.com/OpenSIN-Code/OpenSIN-Code)
-- [Benchmark Arena](https://github.com/SIN-Hackathon/benchmark-arena)
-- [Infra-SIN-OpenCode-Stack](https://github.com/OpenSIN-AI/Infra-SIN-OpenCode-Stack)
+- [ ] Check out `product-market-review`.
+- [ ] Rebase/merge latest `main` if required.
+- [ ] Run all verification commands.
+- [ ] Review changed files for env-only config.
+- [ ] Review docs for truthfulness and secret leaks.
+- [ ] Validate Vercel preview.
+- [ ] Post verification evidence to PR #25.
+- [ ] Merge PR #25 only after all gates pass.
+- [ ] Close issues only after their acceptance criteria are verified.
 
 ---
 
-**Nächster Schritt:** Neue opencode.json und oh-my-opencode.json erstellen basierend auf diesem Plan.
+## 7. Immediate Next Work Items
+
+1. Rotate exposed tokens/secrets and purge them from examples.
+2. Replace `.env.example` values with placeholders.
+3. Run secret scans and fix findings.
+4. Run tests and docs strict build on PR #25.
+5. Add missing tests for WebSockets, rate limits, and CLI API flows.
+6. Convert #14 and #19 into concrete implementation tickets.
+7. Complete Vercel env setup from Infisical and run preview smoke.
+
+---
+
+## 8. Stop Condition
+
+This plan is complete when the file is committed or intentionally left as a working-tree plan update. Execution must stop after creating/updating this plan unless explicitly asked to continue.
