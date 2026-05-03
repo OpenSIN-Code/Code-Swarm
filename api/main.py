@@ -5,14 +5,60 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timezone
 import json
+import os
+import secrets
+import logging
 from pathlib import Path
 
 from auth.security import AuthManager, RBACManager
 from monitoring.metrics import MetricsCollector, HealthChecker
 
 
-SECRET_KEY = "code-swarm-secret-key-change-in-production"
-BASE_DIR = Path(".")
+logger = logging.getLogger("code-swarm.api")
+
+# --- Security configuration (CEO Audit fix) -----------------------------------
+# SECRET_KEY MUST be supplied via environment in production. We refuse to start
+# with the legacy hardcoded placeholder. In development, an ephemeral key is
+# generated on boot so local runs still work, but tokens won't survive restarts.
+_LEGACY_INSECURE_KEY = "code-swarm-secret-key-change-in-production"
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+SECRET_KEY = os.getenv("SECRET_KEY", "").strip()
+
+if not SECRET_KEY or SECRET_KEY == _LEGACY_INSECURE_KEY:
+    if ENVIRONMENT == "production":
+        raise RuntimeError(
+            "SECRET_KEY environment variable is required in production "
+            "and must not be the legacy default. Set a strong random value, "
+            "e.g. `python -c 'import secrets; print(secrets.token_urlsafe(64))'`."
+        )
+    SECRET_KEY = secrets.token_urlsafe(64)
+    logger.warning(
+        "SECRET_KEY not set; generated an ephemeral development key. "
+        "Tokens will be invalidated on restart. Set SECRET_KEY in your env "
+        "for stable sessions."
+    )
+
+# CORS: production must declare explicit origins. Wildcard with credentials is
+# rejected by browsers and is a security smell.
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "").strip()
+if _raw_origins:
+    ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+else:
+    if ENVIRONMENT == "production":
+        raise RuntimeError(
+            "ALLOWED_ORIGINS environment variable is required in production "
+            "(comma-separated list of allowed origins, e.g. https://app.opensin.ai)."
+        )
+    ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+    ]
+    logger.warning(
+        "ALLOWED_ORIGINS not set; falling back to localhost development origins."
+    )
+
+BASE_DIR = Path(os.getenv("CODE_SWARM_BASE_DIR", "."))
 
 auth_manager = AuthManager(secret_key=SECRET_KEY, base_dir=BASE_DIR)
 rbac_manager = RBACManager(base_dir=BASE_DIR)
@@ -28,10 +74,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
 
 
