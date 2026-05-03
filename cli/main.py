@@ -1,6 +1,7 @@
 from __future__ import annotations
 import typer
 from typing import Optional, List
+import shlex
 from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn, TimeElapsedColumn, track
@@ -19,6 +20,14 @@ import requests
 import os
 from datetime import datetime
 
+from .recursivemas import (
+    benchmark_rows,
+    build_run_command,
+    format_style_summary,
+    list_supported_styles,
+    missing_runtime_dependencies,
+)
+
 app = typer.Typer(
     name="code-swarm",
     help="🚀 Code-Swarm CLI - Multi-Agent Swarm Orchestration System",
@@ -26,6 +35,15 @@ app = typer.Typer(
     rich_markup_mode="rich",
     pretty_exceptions_enable=True
 )
+
+mas_app = typer.Typer(
+    name="mas",
+    help="RecursiveMAS integration commands",
+    rich_markup_mode="rich",
+    pretty_exceptions_enable=True,
+)
+
+app.add_typer(mas_app, name="mas")
 
 console = Console()
 API_BASE_URL = os.getenv("API_URL", "http://localhost:8000")
@@ -321,6 +339,102 @@ def health():
             except Exception as e:
                 progress.update(task, description=f"[red]✗ {check_name}: {e}[/red]")
             time.sleep(0.5)
+
+
+@mas_app.command("styles")
+def mas_styles():
+    """📚 List supported RecursiveMAS styles."""
+    table = Table(
+        title=f"[bold cyan]RecursiveMAS Styles[/bold cyan] ({len(benchmark_rows())} benchmarks)",
+        show_header=True,
+        header_style="bold magenta",
+    )
+    table.add_column("Style", style="cyan")
+    table.add_column("Family", style="green")
+    table.add_column("Batch", style="yellow", justify="right")
+    table.add_column("Description", style="white")
+
+    for style in list_supported_styles():
+        summary = format_style_summary(style).splitlines()
+        family = next((line.split(": ", 1)[1] for line in summary if line.startswith("Family:")), "n/a")
+        batch = next((line.split(": ", 1)[1] for line in summary if line.startswith("Recommended batch size:")), "n/a")
+        description = next((line.split(": ", 1)[1] for line in summary if line.startswith("Description:")), "n/a")
+        table.add_row(style, family, batch, description)
+
+    console.print(table)
+
+
+@mas_app.command("inspect")
+def mas_inspect(
+    style: str = typer.Argument(..., help="RecursiveMAS style name")
+):
+    """🔎 Show the role layout and checkpoint mapping for a style."""
+    console.print(Panel(format_style_summary(style), title=f"[bold]RecursiveMAS: {style}[/bold]", expand=False))
+
+
+@mas_app.command("benchmark")
+def mas_benchmark(
+    style: str = typer.Argument(..., help="RecursiveMAS style name"),
+    dataset: str = typer.Option("math500", "--dataset", help="Benchmark dataset"),
+    dataset_split: str = typer.Option("", "--dataset-split", help="Override dataset split"),
+    batch_size: Optional[int] = typer.Option(None, "--batch-size", help="Override batch size"),
+    latent_length: int = typer.Option(32, "--latent-length", help="Latent recursion steps"),
+    rounds: int = typer.Option(3, "--rounds", help="Recursive rounds"),
+    seed: int = typer.Option(42, "--seed", help="Random seed"),
+    sample_seed: int = typer.Option(-1, "--sample-seed", help="Sampling seed"),
+    temperature: float = typer.Option(0.6, "--temperature", help="Sampling temperature"),
+    top_p: float = typer.Option(0.95, "--top-p", help="Top-p sampling"),
+    top_k: int = typer.Option(-1, "--top-k", help="Top-k sampling"),
+    device: Optional[str] = typer.Option(None, "--device", help="Torch device"),
+    trust_remote_code: bool = typer.Option(True, "--trust-remote-code/--no-trust-remote-code", help="Trust HF repo code"),
+    python: str = typer.Option(sys.executable, "--python", help="Python executable"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Print command only"),
+):
+    """🧪 Run the RecursiveMAS benchmark runner."""
+    missing = missing_runtime_dependencies()
+    command = build_run_command(
+        style,
+        dataset=dataset,
+        dataset_split=dataset_split,
+        batch_size=batch_size,
+        device=device,
+        seed=seed,
+        sample_seed=sample_seed,
+        rounds=rounds,
+        latent_length=latent_length,
+        temperature=temperature,
+        top_p=top_p,
+        top_k=top_k,
+        trust_remote_code=trust_remote_code,
+        python_executable=python,
+    )
+
+    console.print(Panel(shlex.join(command), title="[bold]RecursiveMAS command[/bold]", expand=False))
+
+    if dry_run:
+        if missing:
+            console.print(f"[yellow]Missing runtime deps:[/yellow] {', '.join(missing)}")
+        return
+
+    if missing:
+        console.print(
+            Panel(
+                "\n".join(
+                    [
+                        "RecursiveMAS runtime dependencies are missing.",
+                        f"Missing: {', '.join(missing)}",
+                        "Install recursivemas/requirements.txt before running the benchmark.",
+                    ]
+                ),
+                title="[red]Dependency Check Failed[/red]",
+                expand=False,
+            )
+        )
+        raise typer.Exit(code=1)
+
+    completed = subprocess.run(command)
+    if completed.returncode != 0:
+        raise typer.Exit(code=completed.returncode)
 
 
 if __name__ == "__main__":

@@ -6,14 +6,13 @@ from typing import Any, Dict
 
 import torch
 
-from hf_resolver import (
+from .hf_resolver import (
     resolve_inner_adapter,
     resolve_outer_paths,
     snapshot_repo,
     task_for_inner_repo,
 )
-from inference_utils import inference_mas as base
-from load_from_repo import STYLE_SPECS
+from .load_from_repo import STYLE_SPECS
 
 
 INNER_ADAPTER_TYPE_FALLBACK = "ln_res_adapter"
@@ -100,13 +99,24 @@ _OUTER_LAYOUTS: Dict[str, Dict[str, tuple[str, str]]] = {
 }
 
 
+def _load_release_base():
+    try:
+        from .inference_utils import inference_mas as base
+    except ModuleNotFoundError as exc:  # pragma: no cover - exercised only when deps missing
+        raise ModuleNotFoundError(
+            "RecursiveMAS inference dependencies are missing. "
+            "Install recursivemas/requirements.txt to enable load_mas_system()."
+        ) from exc
+    return base
+
+
 def _materialize_repo(repo_id: str) -> Path:
     return snapshot_repo(repo_id)
 
 
 def _normalize_dtype(value: str | torch.dtype):
     if isinstance(value, str):
-        resolved = base.resolve_dtype(value)
+        resolved = _load_release_base().resolve_dtype(value)
         if resolved is None:
             raise ValueError(f"Unsupported dtype value: {value}")
         return resolved
@@ -167,6 +177,7 @@ def load_mas_system(
     outer_dtype: str | torch.dtype = "auto",
     trust_remote_code: bool = True,
 ) -> LoadedMASSystem:
+    base = _load_release_base()
     paths = resolve_mas_paths(style=style, dataset=dataset)
     family = paths.family
     device_obj = torch.device(device)
@@ -235,6 +246,7 @@ def load_mas_system(
 
 
 def unload_mas_system(system: LoadedMASSystem) -> None:
+    base = _load_release_base()
     modules = []
     for agent in system.agents.values():
         modules.extend([agent.model, agent.tokenizer, agent.inner_adapter])
@@ -248,4 +260,3 @@ def summarize_mas_paths(paths: ResolvedMASPaths) -> Dict[str, Dict[str, str]]:
         "inner_adapter_paths": {k: str(v) for k, v in paths.inner_adapter_paths.items()},
         "outer_adapter_paths": {k: str(v) for k, v in paths.outer_adapter_paths.items()},
     }
-

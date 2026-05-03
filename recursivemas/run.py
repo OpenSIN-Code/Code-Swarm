@@ -15,20 +15,36 @@ PARENT_DIR = THIS_DIR.parent
 if str(PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(PARENT_DIR))
 
-from hf_resolver import (
-    resolve_inner_adapter,
-    resolve_medqa_dataset_arg,
-    resolve_outer_paths,
-    snapshot_repo,
-    task_for_inner_repo,
-)
-from load_from_repo import DATASET_DEFAULT_SPLIT, STYLE_SPECS
-from inference_utils import (
-    inference_mas,
-    inference_mas_deliberation,
-    inference_mas_distill,
-    inference_mas_mixture,
-)
+try:
+    from .hf_resolver import (
+        resolve_inner_adapter,
+        resolve_medqa_dataset_arg,
+        resolve_outer_paths,
+        snapshot_repo,
+        task_for_inner_repo,
+    )
+    from .load_from_repo import DATASET_DEFAULT_SPLIT, STYLE_SPECS
+    from .inference_utils import (
+        inference_mas,
+        inference_mas_deliberation,
+        inference_mas_distill,
+        inference_mas_mixture,
+    )
+except ImportError:  # pragma: no cover - direct script execution fallback
+    from hf_resolver import (
+        resolve_inner_adapter,
+        resolve_medqa_dataset_arg,
+        resolve_outer_paths,
+        snapshot_repo,
+        task_for_inner_repo,
+    )
+    from load_from_repo import DATASET_DEFAULT_SPLIT, STYLE_SPECS
+    from inference_utils import (
+        inference_mas,
+        inference_mas_deliberation,
+        inference_mas_distill,
+        inference_mas_mixture,
+    )
 
 LATENT_STEPS_SWEEP: Tuple = (16, 32, 48)
 GPQA_DEFAULT_CHOICE_OLD_PROMPT = 2

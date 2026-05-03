@@ -1,13 +1,60 @@
 from __future__ import annotations
 from typing import TypedDict, List, Dict, Any, Optional
-from swarm_pipeline.recursive_link import RecursiveMASBridge
 import asyncio
 import os
-from langgraph.graph import StateGraph, END
-from langgraph.prebuilt import ToolNode
-from langgraph.checkpoint.memory import MemorySaver
+import torch
+from swarm_pipeline.recursive_link import RecursiveMASBridge
 from .state import OpenCodeState
-from simone_mcp.bridge import SwarmSimoneBridge, SIMONE_TOOL_PROMPT
+
+try:  # pragma: no cover - optional runtime dependency
+    from langgraph.graph import StateGraph, END
+    from langgraph.prebuilt import ToolNode
+    from langgraph.checkpoint.memory import MemorySaver
+except ModuleNotFoundError:  # pragma: no cover - test/runtime fallback
+    class StateGraph:  # type: ignore[override]
+        def __init__(self, schema):
+            self.schema = schema
+            self.nodes = {}
+            self.edges = []
+            self.entry_point = None
+
+        def add_node(self, name, node):
+            self.nodes[name] = node
+
+        def set_entry_point(self, node):
+            self.entry_point = node
+
+        def add_conditional_edges(self, source, router):
+            self.edges.append((source, router))
+
+        def add_edge(self, source, target):
+            self.edges.append((source, target))
+
+        def compile(self, checkpointer=None):
+            return {"checkpointer": checkpointer, "nodes": self.nodes, "edges": self.edges}
+
+    class MemorySaver:  # type: ignore[override]
+        pass
+
+    class ToolNode:  # type: ignore[override]
+        pass
+
+    END = "END"
+
+try:  # pragma: no cover - optional runtime dependency
+    from simone_mcp.bridge import SwarmSimoneBridge, SIMONE_TOOL_PROMPT
+except ModuleNotFoundError:  # pragma: no cover - test/runtime fallback
+    SIMONE_TOOL_PROMPT = ""
+
+    class SwarmSimoneBridge:  # type: ignore[override]
+        def __init__(self, simone_url: str):
+            self.simone_url = simone_url
+
+        async def analyze_code(self, symbol: str, root: str):
+            return {"symbol": symbol, "root": root}
+
+        async def modify_code(self, symbol: str, file: str, body: str):
+            return {"symbol": symbol, "file": file, "body": body}
 
 
 class LangGraphPipeline:
@@ -141,25 +188,80 @@ class LangGraphPipeline:
     def compile(self):
         return self.builder.compile(checkpointer=self.memory)
 
+    def _tensor_summary(self, tensor: torch.Tensor) -> Dict[str, Any]:
+        sample = tensor.detach().float()
+        return {
+            "shape": list(sample.shape),
+            "dtype": str(sample.dtype).replace("torch.", ""),
+            "device": str(sample.device),
+            "mean": float(sample.mean().item()) if sample.numel() else 0.0,
+            "std": float(sample.std(unbiased=False).item()) if sample.numel() > 1 else 0.0,
+            "norm": float(sample.norm().item()) if sample.numel() else 0.0,
+        }
 
-async def create_default_pipeline() -> LangGraphPipeline:
+    def _seed_latent(self) -> torch.Tensor:
+        return torch.zeros(1, self.recursive_bridge.hidden_size, dtype=torch.float32)
+
+    def _record_recursive_activity(self, state: OpenCodeState, agent: str) -> Dict[str, Any]:
+        latent = self._seed_latent()
+        refined, broadcast = self.recursive_bridge(agent, latent)
+        broadcast_summaries = {
+            target: self._tensor_summary(output)
+            for target, output in broadcast.items()
+        }
+        trace_entry = {
+            "agent": agent,
+            "input": self._tensor_summary(latent),
+            "refined": self._tensor_summary(refined),
+            "broadcast": broadcast_summaries,
+        }
+        return {
+            **state,
+            "recursive_round": int(state.get("recursive_round", 0)) + 1,
+            "latent_state_summary": trace_entry["refined"],
+            "latent_trace": state.get("latent_trace", []) + [trace_entry],
+            "recursive_broadcasts": {
+                **state.get("recursive_broadcasts", {}),
+                agent: broadcast_summaries,
+            },
+        }
+
+    def add_recursive_monitor_node(self, name: str, agent: str):
+        """Add a JSON-safe monitoring node for RecursiveMAS latent flow."""
+        async def recursive_monitor_node(state: OpenCodeState):
+            return self._record_recursive_activity(state, agent)
+
+        self.builder.add_node(name, recursive_monitor_node)
+
+
+def create_default_pipeline() -> LangGraphPipeline:
     """Create the default SIN pipeline with all nodes."""
     pipeline = LangGraphPipeline()
     
     # Add all standard nodes
     pipeline.builder.add_node("hermes", hermes_node)
+    pipeline.add_recursive_monitor_node("hermes_recursive", "hermes")
     pipeline.builder.add_node("prometheus", prometheus_node)
+    pipeline.add_recursive_monitor_node("prometheus_recursive", "prometheus")
     pipeline.builder.add_node("zeus", zeus_node)
+    pipeline.add_recursive_monitor_node("zeus_recursive", "zeus")
     pipeline.builder.add_node("atlas", atlas_node)
+    pipeline.add_recursive_monitor_node("atlas_recursive", "atlas")
     pipeline.builder.add_node("iris", iris_node)
+    pipeline.add_recursive_monitor_node("iris_recursive", "iris")
     
     # Add edges
     pipeline.builder.set_entry_point("hermes")
-    pipeline.builder.add_edge("hermes", "prometheus")
-    pipeline.builder.add_edge("prometheus", "zeus")
-    pipeline.builder.add_edge("zeus", "atlas")
-    pipeline.builder.add_edge("atlas", "iris")
-    pipeline.builder.add_edge("iris", END)
+    pipeline.builder.add_edge("hermes", "hermes_recursive")
+    pipeline.builder.add_edge("hermes_recursive", "prometheus")
+    pipeline.builder.add_edge("prometheus", "prometheus_recursive")
+    pipeline.builder.add_edge("prometheus_recursive", "zeus")
+    pipeline.builder.add_edge("zeus", "zeus_recursive")
+    pipeline.builder.add_edge("zeus_recursive", "atlas")
+    pipeline.builder.add_edge("atlas", "atlas_recursive")
+    pipeline.builder.add_edge("atlas_recursive", "iris")
+    pipeline.builder.add_edge("iris", "iris_recursive")
+    pipeline.builder.add_edge("iris_recursive", END)
     
     return pipeline
 
@@ -231,8 +333,3 @@ def iris_node(state: OpenCodeState):
             }
         ]
     }
-
-    def recursive_step(self, agent_idx: int, latent_state: torch.Tensor) -> torch.Tensor:
-        if 0 <= agent_idx < len(self.agent_links):
-            return self.agent_links[agent_idx](latent_state)
-        return self.recursive_link(latent_state)

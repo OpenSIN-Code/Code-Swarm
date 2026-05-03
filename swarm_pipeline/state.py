@@ -11,3 +11,7 @@ class OpenCodeState(TypedDict):
     errors: List[Dict[str, Any]]  # Error Tracking
     feedback: List[Dict[str, Any]]  # Feedback-Loops
     metrics: Dict[str, Any]  # Benchmark-Metriken
+    recursive_round: int  # RecursiveMAS round counter
+    latent_trace: List[Dict[str, Any]]  # JSON-friendly latent summaries
+    latent_state_summary: Dict[str, Any]  # Current latent summary
+    recursive_broadcasts: Dict[str, Any]  # Outer-link transfer summaries
