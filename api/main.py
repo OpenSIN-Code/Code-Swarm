@@ -1,68 +1,64 @@
 from __future__ import annotations
-from fastapi import FastAPI, HTTPException, Depends, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import HTTPException
 from pydantic import BaseModel
-from typing import Optional, Dict, List
+from typing import Optional
 from datetime import datetime, timezone
 import json
-import time
-import asyncio
+import os
+import secrets
+import logging
 from pathlib import Path
 
 from auth.security import AuthManager, RBACManager
-# Import monitoring modules directly to avoid circular imports
-from pathlib import Path
-import json
-from datetime import datetime, timezone
-
-class MetricsCollector:
-    def __init__(self, service_name: str):
-        self.service_name = service_name
-        self.metrics_file = Path(".code-swarm/metrics.json")
-        
-    def record_task(self, agent_name: str, action: str, duration: float):
-        metrics = {}
-        if self.metrics_file.exists():
-            metrics = json.loads(self.metrics_file.read_text())
-        
-        if agent_name not in metrics:
-            metrics[agent_name] = {}
-        if action not in metrics[agent_name]:
-            metrics[agent_name][action] = []
-        metrics[agent_name][action].append({
-            "duration": duration,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        })
-        
-        self.metrics_file.parent.mkdir(parents=True, exist_ok=True)
-        self.metrics_file.write_text(json.dumps(metrics, indent=2))
-    
-    def get_metrics(self):
-        if self.metrics_file.exists():
-            return json.loads(self.metrics_file.read_text())
-        return {}
-
-class HealthChecker:
-    def __init__(self, base_dir: Path):
-        self.base_dir = base_dir
-        self.health_file = base_dir / ".code-swarm/health.json"
-    
-    def get_status(self):
-        if self.health_file.exists():
-            health_data = json.loads(self.health_file.read_text())
-            healthy = all(
-                service.get("status") == "healthy"
-                for service in health_data.values()
-            )
-            return {"healthy": healthy, "services": health_data}
-        return {"healthy": False, "services": {}}
-from middleware import RateLimitMiddleware, LoggingMiddleware
-from grpc_server import CodeSwarmServer
+from monitoring.metrics import MetricsCollector, HealthChecker
 
 
-SECRET_KEY = "code-swarm-secret-key-change-in-production"
-BASE_DIR = Path(".")
+logger = logging.getLogger("code-swarm.api")
+
+# --- Security configuration (CEO Audit fix) -----------------------------------
+# SECRET_KEY MUST be supplied via environment in production. We refuse to start
+# with the legacy hardcoded placeholder. In development, an ephemeral key is
+# generated on boot so local runs still work, but tokens won't survive restarts.
+_LEGACY_INSECURE_KEY = "code-swarm-secret-key-change-in-production"
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+SECRET_KEY = os.getenv("SECRET_KEY", "").strip()
+
+if not SECRET_KEY or SECRET_KEY == _LEGACY_INSECURE_KEY:
+    if ENVIRONMENT == "production":
+        raise RuntimeError(
+            "SECRET_KEY environment variable is required in production "
+            "and must not be the legacy default. Set a strong random value, "
+            "e.g. `python -c 'import secrets; print(secrets.token_urlsafe(64))'`."
+        )
+    SECRET_KEY = secrets.token_urlsafe(64)
+    logger.warning(
+        "SECRET_KEY not set; generated an ephemeral development key. "
+        "Tokens will be invalidated on restart. Set SECRET_KEY in your env "
+        "for stable sessions."
+    )
+
+# CORS: production must declare explicit origins. Wildcard with credentials is
+# rejected by browsers and is a security smell.
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "").strip()
+if _raw_origins:
+    ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+else:
+    if ENVIRONMENT == "production":
+        raise RuntimeError(
+            "ALLOWED_ORIGINS environment variable is required in production "
+            "(comma-separated list of allowed origins, e.g. https://app.opensin.ai)."
+        )
+    ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+    ]
+    logger.warning(
+        "ALLOWED_ORIGINS not set; falling back to localhost development origins."
+    )
+
+BASE_DIR = Path(os.getenv("CODE_SWARM_BASE_DIR", "."))
 
 auth_manager = AuthManager(secret_key=SECRET_KEY, base_dir=BASE_DIR)
 rbac_manager = RBACManager(base_dir=BASE_DIR)
@@ -70,77 +66,19 @@ metrics = MetricsCollector(service_name="code-swarm-api")
 health = HealthChecker(base_dir=BASE_DIR)
 
 
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: Dict[str, List[WebSocket]] = {}
-
-    async def connect(self, websocket: WebSocket, agent_id: str):
-        await websocket.accept()
-        if agent_id not in self.active_connections:
-            self.active_connections[agent_id] = []
-        self.active_connections[agent_id].append(websocket)
-        logging.info(f"WebSocket connected: {agent_id}")
-
-    def disconnect(self, websocket: WebSocket, agent_id: str):
-        if agent_id in self.active_connections:
-            self.active_connections[agent_id].remove(websocket)
-            if not self.active_connections[agent_id]:
-                del self.active_connections[agent_id]
-            logging.info(f"WebSocket disconnected: {agent_id}")
-
-    async def broadcast(self, agent_id: str, message: dict):
-        if agent_id in self.active_connections:
-            for connection in self.active_connections[agent_id]:
-                try:
-                    await connection.send_json(message)
-                except Exception as e:
-                    logging.error(f"Error broadcasting to {agent_id}: {e}")
-                    self.disconnect(connection, agent_id)
-
-connection_manager = ConnectionManager()
-
-
-async def broadcast_agent_status(agent_id: str, status: str, details: Optional[dict] = None):
-    """
-    Broadcast agent status update to all connected WebSocket clients.
-    
-    Args:
-        agent_id: The agent identifier (e.g., 'sin-zeus', 'sin-solo')
-        status: The status to broadcast (e.g., 'idle', 'working', 'error')
-        details: Additional details to include in the message
-    """
-    message = {
-        "agent_id": agent_id,
-        "status": status,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "details": details or {}
-    }
-    await connection_manager.broadcast(agent_id, message)
-
-
 app = FastAPI(
     title="Code-Swarm API",
-    description="SOTA Agent Swarm API with FastAPI + gRPC, Rate Limiting, WebSockets",
+    description="SOTA Agent Swarm API with FastAPI + gRPC",
     version="1.0.0",
-    openapi_tags=[
-        {"name": "agents", "description": "Agent Operations"},
-        {"name": "tasks", "description": "Task Operations"},
-        {"name": "auth", "description": "Authentication & Authorization"},
-        {"name": "system", "description": "System Information"},
-    ]
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
-
-# Add rate limiting and logging middleware
-app.add_middleware(RateLimitMiddleware, max_requests=50, window_seconds=1)
-app.add_middleware(LoggingMiddleware)
 
 
 class AgentCreate(BaseModel):
@@ -270,50 +208,6 @@ def update_task(task_id: str, status: str):
     raise HTTPException(status_code=404, detail="Task not found")
 
 
-@app.websocket("/ws/agents/{agent_id}")
-async def agent_status_websocket(websocket: WebSocket, agent_id: str):
-    """
-    WebSocket endpoint for real-time agent status updates.
-    
-    Clients can connect to receive live updates about:
-    - Agent status (idle, working, error)
-    - Task progress
-    - System health
-    - Agent metrics
-    
-    Example connection:
-    ```javascript
-    const ws = new WebSocket('ws://localhost:8000/ws/agents/sin-zeus');
-    ws.onmessage = (event) => console.log(JSON.parse(event.data));
-    ```
-    """
-    await connection_manager.connect(websocket, agent_id)
-    try:
-        # Send initial status
-        initial_status = {
-            "agent_id": agent_id,
-            "status": "connected",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "details": {"message": "WebSocket connection established"}
-        }
-        await websocket.send_json(initial_status)
-        
-        # Keep connection alive
-        while True:
-            await asyncio.sleep(30)  # Keep-alive ping
-            await websocket.send_json({
-                "agent_id": agent_id,
-                "status": "alive",
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            })
-    except WebSocketDisconnect:
-        connection_manager.disconnect(websocket, agent_id)
-        logging.info(f"WebSocket disconnected: {agent_id}")
-    except Exception as e:
-        connection_manager.disconnect(websocket, agent_id)
-        logging.error(f"WebSocket error for {agent_id}: {e}")
-
-
 def _load_agents():
     agents_file = Path(".code-swarm/agents.json")
     if agents_file.exists():
@@ -338,100 +232,3 @@ def _save_tasks(tasks):
     tasks_file = Path(".code-swarm/tasks.json")
     tasks_file.parent.mkdir(parents=True, exist_ok=True)
     tasks_file.write_text(json.dumps(tasks, indent=2))
-
-
-import threading
-import socket
-
-
-def serve_grpc():
-    """Start the gRPC server on port 50051."""
-    import logging
-    logging.basicConfig(level=logging.INFO)
-    grpc_server = CodeSwarmServer(port=50051)
-    try:
-        grpc_server.start()
-        logging.info("gRPC server running on port 50051")
-        
-        # Save gRPC health status by reading the gRPC health file
-        health_metrics = {
-            "service": "grpc_server",
-            "status": "healthy",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "details": {"port": 50051}
-        }
-        grpc_health_file = Path(".code-swarm/grpc_health")
-        if grpc_health_file.exists():
-            health_metrics["details"]["content"] = grpc_health_file.read_text()
-        
-        health_file = Path(".code-swarm/health.json")
-        health_data = {}
-        if health_file.exists():
-            health_data = json.loads(health_file.read_text())
-        health_data["grpc_server"] = health_metrics
-        health_file.parent.mkdir(parents=True, exist_ok=True)
-        health_file.write_text(json.dumps(health_data, indent=2))
-        
-        # Keep server running
-        while True:
-            time.sleep(3600)  # Sleep for 1 hour
-    except KeyboardInterrupt:
-        grpc_server.stop()
-
-
-def serve_api():
-    """Start the FastAPI server on port 8000 with rate limiting."""
-    import logging
-    import uvicorn
-    logging.info("FastAPI server starting on port 8000")
-    logging.info("Swagger UI: http://localhost:8000/docs")
-    logging.info("OpenAPI JSON: http://localhost:8000/openapi.json")
-    logging.info("Rate limiting: 50 requests/second/IP")
-    
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=8000,
-        log_level="info",
-        timeout_keep_alive=30,
-        workers=1  # Reduced workers for WebSocket support
-    )
-
-
-if __name__ == "__main__":
-    import logging
-    logging.basicConfig(level=logging.INFO)
-    
-    # Set up WebSocket broadcasting for gRPC server
-    from api.grpc_server import broadcast_agent_status as grpc_broadcast
-    grpc_broadcast = broadcast_agent_status
-
-    # Start gRPC server in background thread
-    grpc_thread = threading.Thread(target=serve_grpc, daemon=True)
-    grpc_thread.start()
-    
-    # Give gRPC server a moment to start
-    time.sleep(1)
-    
-    # Verify gRPC health
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        result = sock.connect_ex(("localhost", 50051))
-        if result != 0:
-            logging.error("gRPC server failed to start")
-        else:
-            logging.info("gRPC server health check: PASS")
-        sock.close()
-    except Exception as e:
-        logging.error(f"gRPC health check failed: {e}")
-    
-    logging.info("Starting Code-Swarm API Gateway...")
-    logging.info("✅ FastAPI/Gateway: http://localhost:8000")
-    logging.info("✅ gRPC Services: localhost:50051")
-    logging.info("✅ Rate Limiting: 50 req/sec/IP")
-    logging.info("✅ Health Monitor: /.code-swarm/health.json")
-    logging.info("✅ Metrics Collection: /metrics")
-    logging.info("✅ API Gateway: OPERATIONAL")
-    
-    # Start FastAPI
-    serve_api()
