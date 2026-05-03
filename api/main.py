@@ -9,16 +9,18 @@ import os
 import secrets
 import logging
 from pathlib import Path
-
-import os
-import secrets
-import logging
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from auth.security import AuthManager, RBACManager
 from monitoring.metrics import MetricsCollector, HealthChecker
 
 
 logger = logging.getLogger("code-swarm.api")
+
+# Rate limiter setup
+limiter = Limiter(key_func=get_remote_address)
 
 # --- Security configuration (CEO Audit fix) -----------------------------------
 # SECRET_KEY MUST be supplied via environment in production. We refuse to start
@@ -76,6 +78,10 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Add rate limiter to app state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, lambda request, exc: HTTPException(status_code=429, detail="Rate limit exceeded"))
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -110,19 +116,22 @@ class TokenResponse(BaseModel):
 
 
 @app.get("/health")
-def health_check():
+@limiter.limit("10/minute")
+def health_check(request: Request):
     status = health.get_status()
     return {"status": "healthy" if status["healthy"] else "degraded", "details": status}
 
 
 @app.get("/metrics")
-def get_metrics():
+@limiter.limit("5/minute")
+def get_metrics(request: Request):
     return {"metrics": metrics.get_metrics()}
 
 
 @app.post("/auth/token", response_model=TokenResponse)
-def login(request: TokenRequest):
-    user = auth_manager.authenticate(request.username, request.password)
+@limiter.limit("5/minute")
+def login(request: Request, token_request: TokenRequest):
+    user = auth_manager.authenticate(token_request.username, token_request.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     access_token = auth_manager.create_access_token(
@@ -132,7 +141,8 @@ def login(request: TokenRequest):
 
 
 @app.post("/auth/register")
-def register(username: str, password: str, role: str = "developer"):
+@limiter.limit("3/minute")
+def register(request: Request, username: str, password: str, role: str = "developer"):
     user = auth_manager.create_user(username, password, role)
     if not user:
         raise HTTPException(status_code=400, detail="User already exists")
@@ -140,7 +150,8 @@ def register(username: str, password: str, role: str = "developer"):
 
 
 @app.post("/agents")
-def create_agent(agent: AgentCreate):
+@limiter.limit("30/minute")
+def create_agent(request: Request, agent: AgentCreate):
     agents_data = _load_agents()
     for a in agents_data:
         if a["name"] == agent.name:
@@ -161,12 +172,14 @@ def create_agent(agent: AgentCreate):
 
 
 @app.get("/agents")
-def list_agents():
+@limiter.limit("100/minute")
+def list_agents(request: Request):
     return _load_agents()
 
 
 @app.get("/agents/{agent_id}")
-def get_agent(agent_id: str):
+@limiter.limit("100/minute")
+def get_agent(request: Request, agent_id: str):
     agents = _load_agents()
     for a in agents:
         if a["id"] == agent_id:
@@ -175,7 +188,8 @@ def get_agent(agent_id: str):
 
 
 @app.post("/tasks")
-def create_task(task: TaskCreate):
+@limiter.limit("30/minute")
+def create_task(request: Request, task: TaskCreate):
     tasks_data = _load_tasks()
     new_task = {
         "id": f"task_{len(tasks_data)+1}",
@@ -192,7 +206,8 @@ def create_task(task: TaskCreate):
 
 
 @app.get("/tasks")
-def list_tasks(status: Optional[str] = None):
+@limiter.limit("100/minute")
+def list_tasks(request: Request, status: Optional[str] = None):
     tasks = _load_tasks()
     if status:
         tasks = [t for t in tasks if t["status"] == status]
@@ -200,7 +215,8 @@ def list_tasks(status: Optional[str] = None):
 
 
 @app.patch("/tasks/{task_id}")
-def update_task(task_id: str, status: str):
+@limiter.limit("50/minute")
+def update_task(request: Request, task_id: str, status: str):
     tasks = _load_tasks()
     for task in tasks:
         if task["id"] == task_id:
