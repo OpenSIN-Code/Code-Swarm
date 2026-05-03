@@ -1,0 +1,34 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: code-swarm-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: code-swarm
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: code-swarm
+    - ports:
+        - port: 8000
+        - port: 50051
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: code-swarm
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app: postgresql
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app: redis

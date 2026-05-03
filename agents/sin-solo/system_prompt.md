@@ -41,7 +41,7 @@ Du nutzt Simone-MCP für präzise Code-Operationen:
 ```python
 from simone_mcp.client import SimoneClient
 
-async with SimoneClient("http://localhost:8234") as simone:
+async with SimoneClient(os.getenv("SIMONE_MCP_URL", "http://localhost:8234")) as simone:
     await simone.replace_symbol_body("my_function", "file.py", "def my_function(): return 'new'")
 ```
 

@@ -1,0 +1,52 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/opensin-code/code-swarm
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: false
+  host: api.opensin.ai
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+env:
+  ENVIRONMENT: production
+  SIMONE_MCP_URL: http://simone-mcp:8234
+  PRIMARY_MODEL: fireworks-ai/minimax-m2.7
+  VISION_MODEL: nvidia/nvidia/nemotron-3-nano-omni
+
+envFromSecret: code-swarm-secrets
+
+postgresql:
+  enabled: true
+  auth:
+    database: code_swarm
+    username: code_swarm
+
+redis:
+  enabled: true
+  architecture: standalone
+
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: code-swarm
+description: Code-Swarm Multi-Agent AI Orchestration System
+type: application
+version: 0.4.0
+appVersion: 0.4.0

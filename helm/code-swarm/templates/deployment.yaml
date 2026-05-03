@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "code-swarm.fullname" . }}
+  labels:
+    app: code-swarm
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: code-swarm
+  template:
+    metadata:
+      labels:
+        app: code-swarm
+    spec:
+      containers:
+        - name: code-swarm
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: 8000
+            - containerPort: 50051
+          env:
+            - name: ENVIRONMENT
+              value: {{ .Values.env.ENVIRONMENT }}
+            - name: SIMONE_MCP_URL
+              value: {{ .Values.env.SIMONE_MCP_URL }}
+            - name: PRIMARY_MODEL
+              value: {{ .Values.env.PRIMARY_MODEL }}
+            - name: VISION_MODEL
+              value: {{ .Values.env.VISION_MODEL }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.envFromSecret }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

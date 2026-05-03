@@ -49,7 +49,7 @@ Du nutzt Simone-MCP für alle AST-Level Code-Operationen:
 from simone_mcp.client import SimoneClient
 from simone_mcp.bridge import SwarmSimoneBridge
 
-bridge = SwarmSimoneBridge("http://localhost:8234")
+bridge = SwarmSimoneBridge(os.getenv("SIMONE_MCP_URL", "http://localhost:8234"))
 await bridge.analyze_code("MyClass")
 ```
 

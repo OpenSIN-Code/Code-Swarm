@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: code_swarm
+      POSTGRES_USER: code_swarm
+      POSTGRES_PASSWORD: dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U code_swarm"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: development
+      SECRET_KEY: dev-secret-key-do-not-use-in-prod
+      ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173,http://localhost:8000
+      DATABASE_URL: postgresql://code_swarm:dev_password@postgres:5432/code_swarm
+      REDIS_URL: redis://redis:6379/0
+      SIMONE_MCP_URL: http://simone-mcp:8234
+      PRIMARY_MODEL: fireworks-ai/minimax-m2.7
+      VISION_MODEL: nvidia/nvidia/nemotron-3-nano-omni
+      PROMETHEUS_ENABLED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
