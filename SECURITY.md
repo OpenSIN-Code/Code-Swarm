@@ -88,3 +88,92 @@
 | High | < 4 hours | Security Team |
 | Medium | < 24 hours | Development Team |
 | Low | < 72 hours | Developer On-Call |
+
+## 🚀 CI/CD Pipeline (GitHub Actions)
+
+### Test Pipeline (`.github/workflows/test.yml`)
+
+```yaml
+name: Code-Swarm Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+      
+      - name: Run tests
+        run: |
+          pytest tests/ --cov=api --cov-report=xml
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+```
+
+### Security Pipeline (`.github/workflows/security.yml`)
+
+```yaml
+name: Code-Swarm Security Scan
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * *'
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "table"
+          exit-code: "1"
+          severity: "CRITICAL,HIGH"
+```
+
+### Deployment Pipeline (manuell)
+
+1. **Vercel Deployment**:
+   ```bash
+   npm install -g vercel
+   vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+   vercel build --prod --token=$VERCEL_TOKEN
+   vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+   ```
+
+2. **Environment Variables**:
+   ```bash
+   # Set required env vars in Vercel
+   vercel env add SECRET_KEY production
+   vercel env add ALLOWED_ORIGINS production
+   vercel env add ENVIRONMENT production
+   ```
