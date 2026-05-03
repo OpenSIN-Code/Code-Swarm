@@ -28,19 +28,21 @@ class TestAuthManager:
         payload = auth.verify_token("invalid-token")
         assert payload is None
 
-    @pytest.mark.skip(reason="bcrypt library incompatibility with Python 3.14 on this system")
-    def test_user_creation_and_auth(self):
-        auth = AuthManager(secret_key="test-secret-key")
+    def test_user_creation_and_auth(self, tmp_path):
+        auth = AuthManager(secret_key="test-secret-key", base_dir=tmp_path)
         user = auth.create_user("testuser", "pass123", role="developer")
         assert user is not None
         assert user["username"] == "testuser"
         assert user["role"] == "developer"
         assert "hashed_password" in user
+        # Verifying password against stored hash works end-to-end
+        assert auth.authenticate("testuser", "pass123") is not None
+        assert auth.authenticate("testuser", "wrong") is None
 
-    @pytest.mark.skip(reason="bcrypt library incompatibility with Python 3.14 on this system")
-    def test_password_hashing(self):
-        auth = AuthManager(secret_key="test-secret-key")
+    def test_password_hashing(self, tmp_path):
+        auth = AuthManager(secret_key="test-secret-key", base_dir=tmp_path)
         hashed = auth.hash_password("pass123")
+        assert hashed != "pass123"  # Must be hashed, never stored in plaintext
         assert auth.verify_password("pass123", hashed) is True
         assert auth.verify_password("wrong", hashed) is False
 

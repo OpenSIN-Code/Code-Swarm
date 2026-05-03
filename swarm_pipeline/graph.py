@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import TypedDict, List, Dict, Any, Optional
 import asyncio
+import os
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.memory import MemorySaver
@@ -18,10 +19,19 @@ class LangGraphPipeline:
     - code.insert_after_symbol: Inject code after symbols
     - code.project_overview: Analyze project structure
 
-    Remote endpoint: http://92.5.60.87:8234 (OCI VM)
+    Remote endpoint: configured via SIMONE_MCP_URL environment variable.
+    Raises RuntimeError if neither argument nor env var is set.
     """
 
-    def __init__(self, simone_url: str = "http://92.5.60.87:8234"):
+    def __init__(self, simone_url: Optional[str] = None):
+        # No hardcoded fallback - require explicit configuration
+        simone_url = simone_url or os.getenv("SIMONE_MCP_URL")
+        if not simone_url:
+            raise RuntimeError(
+                "SIMONE_MCP_URL is not configured. "
+                "Set the SIMONE_MCP_URL environment variable or pass simone_url explicitly. "
+                "Example: SIMONE_MCP_URL=http://your-simone-host:8234"
+            )
         self.builder = StateGraph(OpenCodeState)
         self.memory = MemorySaver()
         self.simone = SwarmSimoneBridge(simone_url)
@@ -152,6 +162,7 @@ def hermes_node(state: OpenCodeState):
 
 def prometheus_node(state: OpenCodeState):
     """Prometheus Node: Architecture planning with Simone-MCP."""
+    simone_url = os.getenv("SIMONE_MCP_URL", "<unset>")
     return {
         **state,
         "plans": state["plans"] + [
@@ -162,7 +173,7 @@ def prometheus_node(state: OpenCodeState):
                     "context_window": "1M",
                     "feedback_loops": True,
                     "simone_integrated": True,
-                    "endpoint": "http://92.5.60.87:8234"
+                    "endpoint": simone_url
                 }
             }
         ]

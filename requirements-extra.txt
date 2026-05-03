@@ -1,0 +1,15 @@
+# ============================================================
+# Optional heavyweight dependencies
+# Requires: C compiler + system libs
+# Install only when vector search / numeric / streaming features are needed.
+# ============================================================
+
+# Vector search
+faiss-cpu>=1.10
+numpy>=2.1
+
+# Streaming (Kafka)
+aiokafka>=0.10
+
+# Load testing
+locust>=2.24

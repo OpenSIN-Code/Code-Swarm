@@ -1,38 +1,72 @@
-site_name: Code-Swarm
-site_description: SOTA Agent Swarm Architecture for OpenCode CLI
+site_name: Code-Swarm Documentation
+site_description: Multi-Agent AI Swarm for Software Engineering with LangGraph + Simone-MCP
 site_url: https://opensincode.github.io/Code-Swarm
+repo_url: https://github.com/OpenSIN-Code/Code-Swarm
+repo_name: Code-Swarm
 
 theme:
   name: material
   palette:
     - scheme: default
       primary: indigo
-      accent: indigo
+      accent: blue
     - scheme: slate
       primary: indigo
       accent: cyan
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+    - search.suggest
+    - search.highlight
 
 nav:
   - Home: index.md
+  - Getting Started: getting-started.md
   - Architecture:
     - Overview: architecture/overview.md
-    - Agents: architecture/agents.md
+    - Agents & Personas: architecture/agents.md
     - LangGraph Pipeline: architecture/langgraph.md
+    - Simone-MCP Integration: architecture/simone-mcp.md
   - API Reference:
     - REST API: api/rest.md
-    - WebSocket: api/websocket.md
-  - Deployment:
-    - Kubernetes: deployment/kubernetes.md
-    - Monitoring: deployment/monitoring.md
+    - gRPC API: api/grpc.md
+    - WebSocket Streaming: api/websocket.md
+    - Agents Endpoint: api/agents.md
+    - Tasks Endpoint: api/tasks.md
+  - Guides:
+    - Installation: guides/installation.md
+    - Configuration: guides/configuration.md
+    - CLI Usage: guides/cli.md
+    - Deployment to Vercel: guides/deployment-vercel.md
+    - Kubernetes Deployment: guides/deployment-kubernetes.md
+    - Docker Setup: guides/deployment-docker.md
   - Development:
-    - Setup: development/setup.md
-    - Testing: development/testing.md
+    - Setup Dev Environment: development/setup.md
+    - Running Tests: development/testing.md
+    - Contributing Guide: development/contributing.md
+    - Security Best Practices: development/security.md
+  - Migration Guide: migration.md
+  - FAQ: faq.md
 
 markdown_extensions:
-  - pymdownx.highlight
-  - pymdownx.superfences
+  - pymdownx.highlight:
+      use_pygments: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tabbed:
+      alternate_style: true
   - admonition
   - codehilite
+  - toc:
+      permalink: true
 
 plugins:
   - search
+  - minify:
+      minify_html: true

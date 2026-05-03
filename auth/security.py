@@ -15,7 +15,14 @@ class AuthManager:
     def __init__(self, secret_key: str, base_dir: str | Path = "."):
         self.secret_key = secret_key
         self.base_dir = Path(base_dir)
-        self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        # argon2 is the primary scheme (memory-hard, modern best practice).
+        # bcrypt remains as a fallback for verifying legacy hashes — passlib
+        # transparently rehashes them to argon2 on next successful login.
+        self.pwd_context = CryptContext(
+            schemes=["argon2", "bcrypt"],
+            default="argon2",
+            deprecated=["bcrypt"],
+        )
         self._users_file = self.base_dir / ".code-swarm" / "users.json"
         self._users: dict[str, dict] = {}
         self._load()

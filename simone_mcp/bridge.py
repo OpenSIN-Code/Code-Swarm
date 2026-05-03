@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Optional
+import os
 from .client import SimoneClient, SimoneLocal
 
 
@@ -38,15 +39,26 @@ class SwarmSimoneBridge:
 
     Every Code-Swarm agent gets simone-mcp capabilities via this bridge.
     Supports both:
-    - Remote: OCI VM at http://92.5.60.87:8234 (production)
-    - Local: /Users/jeremy/dev/Simone-MCP (development)
+    - Remote: configured via SIMONE_MCP_URL env var (required for remote mode)
+    - Local: configured via SIMONE_MCP_LOCAL_PATH env var (development, optional)
+
+    Raises RuntimeError if neither remote URL nor local path is configured
+    when the bridge is used.
     """
 
-    def __init__(self, simone_url: str = "http://92.5.60.87:8234", token: Optional[str] = None, local: bool = False):
-        self.simone_url = simone_url
-        self.token = token
+    def __init__(self, simone_url: Optional[str] = None, token: Optional[str] = None, local: bool = False):
+        # No hardcoded fallback - require explicit configuration
+        simone_url = simone_url or os.getenv("SIMONE_MCP_URL")
+        if not simone_url and not local:
+            raise RuntimeError(
+                "SIMONE_MCP_URL is not configured. "
+                "Set the SIMONE_MCP_URL environment variable, pass simone_url explicitly, "
+                "or use local=True with SIMONE_MCP_LOCAL_PATH."
+            )
+        self.simone_url = simone_url or ""
+        self.token = token or os.getenv("SIMONE_MCP_TOKEN")
         self.local = local
-        self._local_path = "/Users/jeremy/dev/Simone-MCP"
+        self._local_path = os.getenv("SIMONE_MCP_LOCAL_PATH", "")
         
     def is_remote_available(self) -> bool:
         """Check if remote Simone-MCP server is available."""
