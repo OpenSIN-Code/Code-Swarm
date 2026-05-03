@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TypedDict, List, Dict, Any, Optional
+from swarm_pipeline.recursive_link import RecursiveLink
 import asyncio
 import os
 from langgraph.graph import StateGraph, END
@@ -23,7 +24,19 @@ class LangGraphPipeline:
     Raises RuntimeError if neither argument nor env var is set.
     """
 
-    def __init__(self, simone_url: Optional[str] = None):
+    def __init__(self, vector_db=None, graph_db=None, simone_url: Optional[str] = None):
+        # RecursiveLink for latent state transformation across agents
+        import torch.nn as nn
+        self.recursive_link = RecursiveLink(input_dim=768, hidden_dim=2048)
+        self.agent_links = nn.ModuleList([
+            RecursiveLink(768, 2048) for _ in range(10)
+        ])
+        # Hybrid Memory
+        if vector_db and graph_db:
+            from memory.hybrid_retriever import HybridRetriever
+            self.memory = HybridRetriever(vector_db, graph_db)
+        else:
+            self.memory = None
         # No hardcoded fallback - require explicit configuration
         simone_url = simone_url or os.getenv("SIMONE_MCP_URL")
         if not simone_url:
@@ -33,7 +46,7 @@ class LangGraphPipeline:
                 "Example: SIMONE_MCP_URL=http://your-simone-host:8234"
             )
         self.builder = StateGraph(OpenCodeState)
-        self.memory = MemorySaver()
+        self._memory_saver = MemorySaver()
         self.simone = SwarmSimoneBridge(simone_url)
         self._validate_simone_connection()
 
@@ -217,3 +230,8 @@ def iris_node(state: OpenCodeState):
             }
         ]
     }
+
+    def recursive_step(self, agent_idx: int, latent_state: torch.Tensor) -> torch.Tensor:
+        if 0 <= agent_idx < len(self.agent_links):
+            return self.agent_links[agent_idx](latent_state)
+        return self.recursive_link(latent_state)
