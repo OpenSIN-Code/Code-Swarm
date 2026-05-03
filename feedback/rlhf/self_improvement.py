@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import numpy as np
 
@@ -18,7 +18,7 @@ class FeedbackEntry:
     model_id: str = ""
     feedback_type: str = "human"
     tags: list[str] = field(default_factory=list)
-    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 class BayesianOptimizer:
@@ -75,7 +75,7 @@ class BayesianOptimizer:
                 "avg_rating": np.mean([e.rating for e in agent_entries]),
                 "high_count": len(high_rated),
                 "low_count": len(low_rated),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
             insights_file = self._feedback_dir / f"{agent_id}_insights.json"
             insights_file.write_text(json.dumps(insights, indent=2))

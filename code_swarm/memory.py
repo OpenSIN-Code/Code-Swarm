@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 
@@ -24,8 +24,8 @@ class MemoryEntry:
     key: str = ""
     value: str = ""
     tags: list[str] = field(default_factory=list)
-    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    updated_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 def _memory_dir(base_dir: str | Path = ".") -> Path:
@@ -71,7 +71,7 @@ def remember(
             existing = entry
             break
     
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     
     if existing:
         existing.value = value

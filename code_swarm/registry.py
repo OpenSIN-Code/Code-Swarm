@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass, field, asdict
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 # --- Legacy Aliases (für Rückwärtskompatibilität) ---
@@ -32,7 +32,7 @@ class RegistryEntry:
     agent_id: str
     schema_version: int = 2
     capabilities: list[str] = field(default_factory=list)
-    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     last_seen_at: Optional[str] = None
 
 
@@ -41,7 +41,7 @@ class SwarmRegistry:
     """Vollständiges Agenten-Registry"""
     version: int = 2
     swarm_id: str = "code-swarm"
-    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     members: dict[str, RegistryEntry] = field(default_factory=dict)
 
 
@@ -150,7 +150,7 @@ class AgentRegistry:
             member_name=member_name.strip().lower(),
             agent_id=resolve_agent_id(member_name, agent_id),
             capabilities=capabilities or [],
-            last_seen_at=datetime.utcnow().isoformat(),
+            last_seen_at=datetime.now(timezone.utc).isoformat(),
         )
         registry.members[entry.member_name] = entry
         self.save(registry)

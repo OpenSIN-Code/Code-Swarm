@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 
@@ -23,7 +23,7 @@ class SwarmEvent:
     swarm_id: str = "code-swarm"
     agent_id: str = ""
     session_id: Optional[str] = None
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     data: dict = field(default_factory=dict)
 
 

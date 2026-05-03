@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 
@@ -11,7 +11,7 @@ import uuid
 class CacheEntry:
     key: str
     value: str
-    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     expires_at: Optional[str] = None
     hits: int = 0
 
@@ -41,11 +41,14 @@ class RedisCache:
         )
 
     def _cleanup_expired(self):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         expired = []
         for key, entry in self._cache.items():
             if entry.expires_at:
-                if datetime.fromisoformat(entry.expires_at) < now:
+                expires = datetime.fromisoformat(entry.expires_at)
+                if expires.tzinfo is None:
+                    expires = expires.replace(tzinfo=timezone.utc)
+                if expires < now:
                     expired.append(key)
         for key in expired:
             del self._cache[key]
@@ -55,7 +58,10 @@ class RedisCache:
         if not entry:
             return None
         if entry.expires_at:
-            if datetime.fromisoformat(entry.expires_at) < datetime.utcnow():
+            expires = datetime.fromisoformat(entry.expires_at)
+            if expires.tzinfo is None:
+                expires = expires.replace(tzinfo=timezone.utc)
+            if expires < datetime.now(timezone.utc):
                 del self._cache[key]
                 self._save()
                 return None
@@ -66,11 +72,11 @@ class RedisCache:
         ttl = ttl or self._ttl
         expires = None
         if ttl > 0:
-            expires = (datetime.utcnow().timestamp() + ttl)
+            expires = (datetime.now(timezone.utc).timestamp() + ttl)
         entry = CacheEntry(
             key=key,
             value=value,
-            expires_at=datetime.fromtimestamp(expires).isoformat() if expires else None
+            expires_at=datetime.fromtimestamp(expires, tz=timezone.utc).isoformat() if expires else None
         )
         self._cache[key] = entry
         self._save()

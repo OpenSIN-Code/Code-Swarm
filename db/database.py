@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from enum import Enum
 
@@ -34,8 +34,8 @@ class Agent:
     status: AgentStatus = AgentStatus.IDLE
     capabilities: list[str] = field(default_factory=list)
     metadata: dict = field(default_factory=dict)
-    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    updated_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     last_seen_at: Optional[str] = None
 
 
@@ -47,7 +47,7 @@ class Session:
     agent_id: Optional[str] = None
     status: str = "active"
     context: dict = field(default_factory=dict)
-    started_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    started_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     ended_at: Optional[str] = None
     duration_ms: Optional[int] = None
     error_count: int = 0
@@ -69,7 +69,7 @@ class Task:
     result: Optional[dict] = None
     error: Optional[str] = None
     depends_on: list[str] = field(default_factory=list)
-    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
     duration_ms: Optional[int] = None

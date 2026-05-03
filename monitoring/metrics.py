@@ -3,7 +3,7 @@ import time
 import json
 from pathlib import Path
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from prometheus_client import Counter, Histogram, Gauge, CollectorRegistry, generate_latest
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -71,7 +71,7 @@ class HealthChecker:
     def check(self, component: str, status: str, details: Optional[dict] = None):
         self._checks[component] = {
             "status": status,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "details": details or {},
         }
         self._save()

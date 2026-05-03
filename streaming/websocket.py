@@ -3,7 +3,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from typing import Optional
 import json
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class WebSocketManager:
@@ -46,7 +46,7 @@ async def agent_status_websocket(websocket: WebSocket):
             if message.get("type") == "ping":
                 await manager.send_to(websocket, {
                     "type": "pong",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
     except WebSocketDisconnect:
         manager.disconnect(websocket)
@@ -63,7 +63,7 @@ async def task_updates_websocket(websocket: WebSocket):
                 "type": "task_update",
                 "task_id": message.get("task_id"),
                 "status": message.get("status"),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             })
     except WebSocketDisconnect:
         manager.disconnect(websocket)
@@ -75,6 +75,6 @@ async def broadcast_task_update(task_id: str, status: str):
         "type": "task_update",
         "task_id": task_id,
         "status": status,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     })
     return {"broadcasted": True}

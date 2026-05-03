@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 
@@ -102,7 +102,7 @@ def create_agent(agent: AgentCreate):
         "role": agent.role,
         "capabilities": agent.capabilities,
         "status": "idle",
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
     agents_data.append(new_agent)
     _save_agents(agents_data)
@@ -134,7 +134,7 @@ def create_task(task: TaskCreate):
         "priority": task.priority,
         "assigned_to": task.assigned_to,
         "status": "pending",
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
     tasks_data.append(new_task)
     _save_tasks(tasks_data)
@@ -156,7 +156,7 @@ def update_task(task_id: str, status: str):
         if task["id"] == task_id:
             task["status"] = status
             if status == "completed":
-                task["completed_at"] = datetime.utcnow().isoformat()
+                task["completed_at"] = datetime.now(timezone.utc).isoformat()
             _save_tasks(tasks)
             return task
     raise HTTPException(status_code=404, detail="Task not found")
