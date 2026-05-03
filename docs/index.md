@@ -62,13 +62,13 @@ graph LR
 - **[Getting Started](getting-started.md)** — Installation, configuration, first run
 - **[Architecture](architecture/overview.md)** — System design and agent personas
 - **[API Reference](api/rest.md)** — REST, gRPC, and WebSocket endpoints
-- **[Guides](guides/installation.md)** — Detailed how-tos for common tasks
-- **[Deployment](guides/deployment-vercel.md)** — Deploy to Vercel, K8s, or Docker
-- **[Development](development/setup.md)** — Contribute to Code-Swarm
+- **[Deployment](guides/deployment-vercel.md)** — Deploy to Vercel
+- **[CLI Guide](guides/cli.md)** — Command reference
 
 ## Status
 
-**Production-Ready:** ✅ Core API, Authentication, Database, Rate Limiting  
-**Stable:** ⭐⭐⭐⭐ (v1.0.0 GA)
+**Version:** v0.4.0 Beta  
+**Implemented:** Core API, Authentication, Database, Rate Limiting, WebSockets, CLI  
+**In Progress:** RLHF feedback loops, Hybrid Memory, Kubernetes, Frontend
 
 Last updated: 2026-05-03

@@ -1,0 +1,41 @@
+site_name: Code-Swarm Documentation
+site_description: Multi-Agent AI Swarm with LangGraph + Simone-MCP
+site_url: https://opensincode.github.io/Code-Swarm
+repo_url: https://github.com/OpenSIN-Code/Code-Swarm
+repo_name: Code-Swarm
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: blue
+    - scheme: slate
+      primary: indigo
+      accent: cyan
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Architecture:
+    - Overview: architecture/overview.md
+  - API Reference:
+    - REST API: api/rest.md
+  - Guides:
+    - CLI Usage: guides/cli.md
+    - Deployment: guides/deployment-vercel.md
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true
+
+plugins:
+  - search

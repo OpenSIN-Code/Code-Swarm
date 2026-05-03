@@ -1,10 +1,10 @@
-# 🚀 Code-Swarm — Production-Ready Multi-Agent AI System
+# 🚀 Code-Swarm — Multi-Agent AI Orchestration System
 
-> **Status:** v1.0.0 GA | **Updated:** 2026-05-03 | **CEO Audit:** ✅ PASSED
+> **Status:** v0.4.0 Beta | **Updated:** 2026-05-03 | **PR #25:** Open — awaiting acceptance gates
 
 ## 📊 Executive Summary
 
-Code-Swarm is a **production-grade, multi-agent orchestration system** for software engineering. It combines LangGraph (state management), Simone-MCP (AST-level code operations), and Supabase (persistent storage) into a unified platform for AI-driven development.
+Code-Swarm is a **multi-agent orchestration system** for software engineering. It combines LangGraph (state management), Simone-MCP (AST-level code operations), and Supabase (persistent storage) into a unified platform for AI-driven development.
 
 ### Key Metrics
 | Metric | Value | Status |
@@ -122,7 +122,7 @@ curl http://localhost:8000/metrics
 
 ## 📖 Documentation
 
-Complete documentation at `/docs`:
+Documentation at `/docs`:
 
 - **[Getting Started](docs/getting-started.md)** — Installation & first run
 - **[Architecture](docs/architecture/overview.md)** — System design
@@ -220,4 +220,4 @@ Apache 2.0 — See [LICENSE](LICENSE)
 **Built with ❤️ by [OpenSIN Code](https://github.com/OpenSIN-Code)**
 
 **Last Updated:** 2026-05-03  
-**Status:** Production Ready ✅
+**Status:** v0.4.0 Beta — PR #25 acceptance gates in progress

@@ -211,3 +211,58 @@ chmod +x vercel-deploy.sh
 5. [ ] Set up monitoring and alerts
 6. [ ] Configure custom domain
 7. [ ] Set up SSL certificates
+
+## 🚀 Production Deployment
+
+### Deployment Script
+
+```bash
+# Make executable
+chmod +x vercel-deploy-prod.sh
+
+# Deploy to production
+./vercel-deploy-prod.sh
+```
+
+### Environment Variables
+
+| Variable | Production Value | Description |
+|----------|------------------|-------------|
+| `SECRET_KEY` | `FJ9wyxt_wMEPV6pYvu2Ptt_pP04q1OjbNgVM3ZnhltUD6zPnHQh-sAqXajbuohLUq7nwe6Iihj0L6RnpMknyog` | Strong random secret |
+| `ALLOWED_ORIGINS` | `https://app.opensin.ai,https://docs.opensin.ai` | Production domains |
+| `ENVIRONMENT` | `production` | Production mode |
+| `DATABASE_URL` | `postgresql://opensin:S3cur3P@ssw0rd@db.opensin.ai:5432/code_swarm_prod` | Production database |
+| `REDIS_URL` | `redis://:R3d1sP@ssw0rd@cache.opensin.ai:6379/0` | Production cache |
+| `PRIMARY_MODEL` | `fireworks-ai/minimax-m2.7` | Primary agent model |
+| `VISION_MODEL` | `nvidia/nvidia/nemotron-3-nano-omni` | Vision model |
+
+### Post-Deployment
+
+1. **Health Check**
+   ```bash
+   curl https://api.opensin.ai/health
+   ```
+
+2. **Metrics**
+   ```bash
+   curl https://api.opensin.ai/metrics
+   ```
+
+3. **Swagger UI**
+   ```bash
+   https://api.opensin.ai/docs
+   ```
+
+### Monitoring
+
+- **Prometheus**: https://prometheus.opensin.ai
+- **Grafana**: https://grafana.opensin.ai/d/code-swarm
+- **Sentry**: https://sentry.io/organizations/opensin/
+- **Logs**: https://logs.opensin.ai
+
+### Alerting
+
+- **Critical**: CEO + Security Team
+- **High**: Security Team
+- **Medium**: Development Team
+- **Low**: Developer On-Call
