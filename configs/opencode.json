@@ -1,6 +1,7 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
+    "/Users/jeremy/.config/opencode/vendor/opencode-antigravity-auth-1.6.5-beta.0",
     "opencode-openrouter-auth",
     "opencode-qwen-auth",
     "/Users/jeremy/.config/opencode/local-plugins/oh-my-opencode-sin"
@@ -513,15 +514,6 @@
       "type": "local",
       "command": [
         "/Users/jeremy/dev/OpenSIN-backend/bin/sin-paragraph",
-        "serve-mcp"
-      ],
-      "enabled": true
-    },
-    "simone-mcp": {
-      "type": "local",
-      "command": [
-        "node",
-        "/Users/jeremy/dev/Simone-MCP/dist/src/cli.js",
         "serve-mcp"
       ],
       "enabled": true
