@@ -5,15 +5,18 @@ from concurrent import futures
 import time
 from pathlib import Path
 
-from . import code_swarm_pb2
-from . import code_swarm_pb2_grpc
+import code_swarm_pb2
+import code_swarm_pb2_grpc
 
-from db.database import Database
-from auth.security import AuthManager
-from monitoring.metrics import MetricsCollector
 # Import data utilities directly to avoid circular imports
 from pathlib import Path
 import json
+import asyncio
+import logging
+
+# Import WebSocket broadcasting function from main module
+# This will be set after the gRPC server is initialized to avoid circular imports
+broadcast_agent_status = None
 
 def _load_agents():
     agents_file = Path(".code-swarm/agents.json")
@@ -79,11 +82,26 @@ class CodeSwarmAgentService(code_swarm_pb2_grpc.AgentServiceServicer):
 
     def GetAgent(self, request, context):
         agents = _load_agents()
-        
-        for a in agents:
-            if a["id"] == request.id:
-                return code_swarm_pb2.AgentResponse(**a)
-        
+        for agent in agents:
+            if agent["id"] == request.id:
+                # Broadcast agent status update
+                if broadcast_agent_status:
+                    asyncio.run_coroutine_threadsafe(
+                        broadcast_agent_status(
+                            agent["id"],
+                            agent["status"],
+                            {"action": "get_agent", "status": "success"}
+                        ),
+                        asyncio.get_event_loop()
+                    )
+                return code_swarm_pb2.AgentResponse(
+                    id=agent["id"],
+                    name=agent["name"],
+                    model=agent["model"],
+                    role=agent["role"],
+                    status=agent["status"],
+                    created_at=agent["created_at"]
+                )
         context.set_code(grpc.StatusCode.NOT_FOUND)
         context.set_details("Agent not found")
         return code_swarm_pb2.AgentResponse()

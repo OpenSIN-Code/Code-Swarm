@@ -1,18 +1,64 @@
 from __future__ import annotations
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import HTTPException
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, List
 from datetime import datetime, timezone
 import json
 import time
+import asyncio
 from pathlib import Path
 
 from auth.security import AuthManager, RBACManager
-from monitoring.metrics import MetricsCollector, HealthChecker
-from .middleware import RateLimitMiddleware, LoggingMiddleware
-from .grpc_server import CodeSwarmServer
+# Import monitoring modules directly to avoid circular imports
+from pathlib import Path
+import json
+from datetime import datetime, timezone
+
+class MetricsCollector:
+    def __init__(self, service_name: str):
+        self.service_name = service_name
+        self.metrics_file = Path(".code-swarm/metrics.json")
+        
+    def record_task(self, agent_name: str, action: str, duration: float):
+        metrics = {}
+        if self.metrics_file.exists():
+            metrics = json.loads(self.metrics_file.read_text())
+        
+        if agent_name not in metrics:
+            metrics[agent_name] = {}
+        if action not in metrics[agent_name]:
+            metrics[agent_name][action] = []
+        metrics[agent_name][action].append({
+            "duration": duration,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        
+        self.metrics_file.parent.mkdir(parents=True, exist_ok=True)
+        self.metrics_file.write_text(json.dumps(metrics, indent=2))
+    
+    def get_metrics(self):
+        if self.metrics_file.exists():
+            return json.loads(self.metrics_file.read_text())
+        return {}
+
+class HealthChecker:
+    def __init__(self, base_dir: Path):
+        self.base_dir = base_dir
+        self.health_file = base_dir / ".code-swarm/health.json"
+    
+    def get_status(self):
+        if self.health_file.exists():
+            health_data = json.loads(self.health_file.read_text())
+            healthy = all(
+                service.get("status") == "healthy"
+                for service in health_data.values()
+            )
+            return {"healthy": healthy, "services": health_data}
+        return {"healthy": False, "services": {}}
+from middleware import RateLimitMiddleware, LoggingMiddleware
+from grpc_server import CodeSwarmServer
 
 
 SECRET_KEY = "code-swarm-secret-key-change-in-production"
@@ -22,6 +68,54 @@ auth_manager = AuthManager(secret_key=SECRET_KEY, base_dir=BASE_DIR)
 rbac_manager = RBACManager(base_dir=BASE_DIR)
 metrics = MetricsCollector(service_name="code-swarm-api")
 health = HealthChecker(base_dir=BASE_DIR)
+
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, List[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, agent_id: str):
+        await websocket.accept()
+        if agent_id not in self.active_connections:
+            self.active_connections[agent_id] = []
+        self.active_connections[agent_id].append(websocket)
+        logging.info(f"WebSocket connected: {agent_id}")
+
+    def disconnect(self, websocket: WebSocket, agent_id: str):
+        if agent_id in self.active_connections:
+            self.active_connections[agent_id].remove(websocket)
+            if not self.active_connections[agent_id]:
+                del self.active_connections[agent_id]
+            logging.info(f"WebSocket disconnected: {agent_id}")
+
+    async def broadcast(self, agent_id: str, message: dict):
+        if agent_id in self.active_connections:
+            for connection in self.active_connections[agent_id]:
+                try:
+                    await connection.send_json(message)
+                except Exception as e:
+                    logging.error(f"Error broadcasting to {agent_id}: {e}")
+                    self.disconnect(connection, agent_id)
+
+connection_manager = ConnectionManager()
+
+
+async def broadcast_agent_status(agent_id: str, status: str, details: Optional[dict] = None):
+    """
+    Broadcast agent status update to all connected WebSocket clients.
+    
+    Args:
+        agent_id: The agent identifier (e.g., 'sin-zeus', 'sin-solo')
+        status: The status to broadcast (e.g., 'idle', 'working', 'error')
+        details: Additional details to include in the message
+    """
+    message = {
+        "agent_id": agent_id,
+        "status": status,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "details": details or {}
+    }
+    await connection_manager.broadcast(agent_id, message)
 
 
 app = FastAPI(
@@ -176,6 +270,50 @@ def update_task(task_id: str, status: str):
     raise HTTPException(status_code=404, detail="Task not found")
 
 
+@app.websocket("/ws/agents/{agent_id}")
+async def agent_status_websocket(websocket: WebSocket, agent_id: str):
+    """
+    WebSocket endpoint for real-time agent status updates.
+    
+    Clients can connect to receive live updates about:
+    - Agent status (idle, working, error)
+    - Task progress
+    - System health
+    - Agent metrics
+    
+    Example connection:
+    ```javascript
+    const ws = new WebSocket('ws://localhost:8000/ws/agents/sin-zeus');
+    ws.onmessage = (event) => console.log(JSON.parse(event.data));
+    ```
+    """
+    await connection_manager.connect(websocket, agent_id)
+    try:
+        # Send initial status
+        initial_status = {
+            "agent_id": agent_id,
+            "status": "connected",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "details": {"message": "WebSocket connection established"}
+        }
+        await websocket.send_json(initial_status)
+        
+        # Keep connection alive
+        while True:
+            await asyncio.sleep(30)  # Keep-alive ping
+            await websocket.send_json({
+                "agent_id": agent_id,
+                "status": "alive",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+    except WebSocketDisconnect:
+        connection_manager.disconnect(websocket, agent_id)
+        logging.info(f"WebSocket disconnected: {agent_id}")
+    except Exception as e:
+        connection_manager.disconnect(websocket, agent_id)
+        logging.error(f"WebSocket error for {agent_id}: {e}")
+
+
 def _load_agents():
     agents_file = Path(".code-swarm/agents.json")
     if agents_file.exists():
@@ -244,6 +382,7 @@ def serve_grpc():
 def serve_api():
     """Start the FastAPI server on port 8000 with rate limiting."""
     import logging
+    import uvicorn
     logging.info("FastAPI server starting on port 8000")
     logging.info("Swagger UI: http://localhost:8000/docs")
     logging.info("OpenAPI JSON: http://localhost:8000/openapi.json")
@@ -255,7 +394,7 @@ def serve_api():
         port=8000,
         log_level="info",
         timeout_keep_alive=30,
-        workers=4
+        workers=1  # Reduced workers for WebSocket support
     )
 
 
@@ -263,6 +402,10 @@ if __name__ == "__main__":
     import logging
     logging.basicConfig(level=logging.INFO)
     
+    # Set up WebSocket broadcasting for gRPC server
+    from api.grpc_server import broadcast_agent_status as grpc_broadcast
+    grpc_broadcast = broadcast_agent_status
+
     # Start gRPC server in background thread
     grpc_thread = threading.Thread(target=serve_grpc, daemon=True)
     grpc_thread.start()
